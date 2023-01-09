@@ -16,7 +16,7 @@ namespace Lockstep
     {
         public static Clock Instance { get; private set; }
 
-        public ushort CurrentTick { get; private set; } = 0;
+        public ushort CurrentTick { get; private set; }
         public bool Paused { get; private set; } = false;
         public event Action<ushort> TickUpdated;
 
@@ -41,7 +41,7 @@ namespace Lockstep
                 Stop();
             }
 
-            CurrentTick = 0;
+            CurrentTick = TickService.StartTick;
             Paused = false;
             m_ClockCoroutine = NextTick();
             StartCoroutine(m_ClockCoroutine);
@@ -66,16 +66,17 @@ namespace Lockstep
         {
             while (true)
             {
-                // We implement pausing this way instead of restarting the coroutine
-                // in order to preserve the original timing
-                if (!Paused)
-                {
-                    SetCurrentTick(TickService.AddTick(CurrentTick, 1));
-                }
-
+                // Keep this first so that the start tick is ran
                 TickUpdated?.Invoke(CurrentTick);
 
                 yield return new WaitForSecondsRealtime(TickService.TimeBetweenTicksSec);
+
+                // We implement pausing this way instead of restarting the coroutine
+                // in order to preserve the original cadence
+                if (!Paused)
+                {
+                    SetCurrentTick(TickService.Add(CurrentTick, 1));
+                }
             }
         }
 

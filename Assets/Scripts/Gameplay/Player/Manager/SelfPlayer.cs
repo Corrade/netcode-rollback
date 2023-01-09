@@ -32,9 +32,9 @@ namespace Lockstep
             m_SelfInputManager.WriteInput(currentTick);
         }
 
-        public void SendUnackedInputs(ushort currentTick)
+        public void SendUnackedInputs(ushort untilTickExclusive)
         {
-            m_SelfInputManager.SendUnackedInputs(currentTick);
+            m_SelfInputManager.SendUnackedInputs(untilTickExclusive);
         }
     }
 }

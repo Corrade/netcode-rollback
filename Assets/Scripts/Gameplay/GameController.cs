@@ -15,9 +15,6 @@ namespace Lockstep
     public class GameController : MonoBehaviour
     {
         [SerializeField]
-        ConnectionManager ConnectionManager;
-
-        [SerializeField]
         SpawnManager SpawnManager;
 
         [SerializeField]
@@ -30,7 +27,6 @@ namespace Lockstep
 
         void Awake()
         {
-            Assert.IsTrue(ConnectionManager != null);
             Assert.IsTrue(SelfPlayer != null);
             Assert.IsTrue(PeerPlayer != null);
 
@@ -39,10 +35,7 @@ namespace Lockstep
 
         void Start()
         {
-            // TODO yeah i had an instance where i started a thing in the editor first. then off-editor. off-editor receive metadata first. then only after a long wait the editor received the off-editor's metadata. i presume that the FIRST-OPENED instance may miss the second-opened instance's metadata being sent the first time
-            // nah try again i had error pause on
-            // Possible race condition if the peer's metadata message is sent too early, i.e. before this is called on the self client
-            ConnectionManager.AddOnMessageReceived(OnMessageReceived);
+            ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
 
             StartCoroutine(PreGame());
         }
@@ -54,21 +47,31 @@ namespace Lockstep
 
         IEnumerator PreGame()
         {
-            SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: Settings.SelfPlayerName, connectionManager: ConnectionManager);
+            SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: Settings.SelfPlayerName);
 
             // Setup all connections
-            yield return ConnectionManager.Setup();
+            yield return ConnectionManager.Instance.Setup();
+
+            // Send client player metadata to peer and wait for theirs
+            yield return PlayerMetadataSync();
 
             // Send self player metadata to peer
+            StartGame();
+        }
+
+        IEnumerator PlayerMetadataSync()
+        {
+            SendPlayerMetadata();
+
+            yield return new WaitUntil(() => m_PeerPlayerMetadataReceived);
+        }
+
+        void SendPlayerMetadata()
+        {
             using (Message msg = PlayerMetadataMsg.CreateMessage(Settings.SelfPlayerName))
             {
-                ConnectionManager.SendMessage(msg, SendMode.Reliable);
+                ConnectionManager.Instance.SendMessage(msg, SendMode.Reliable);
             }
-
-            // Receive peer player metadata
-            yield return new WaitUntil(() => m_PeerPlayerMetadataReceived);
-
-            StartGame();
         }
 
         void StartGame()
@@ -84,12 +87,13 @@ namespace Lockstep
 
         void OnTickUpdated(ushort currentTick)
         {
-            ushort simulationTick = TickService.SubtractTick(currentTick, Settings.InputDelayTicks);
+            ushort simulationTick = TickService.Subtract(currentTick, Settings.InputDelayTicks);
 
-            SelfPlayer.SendUnackedInputs(currentTick);
+            SelfPlayer.SendUnackedInputs(untilTickExclusive: currentTick);
 
             if (!PeerPlayer.HasInput(simulationTick))
             {
+                // Debug.Log($"tickupdated => peer player doesn't hvae input for sim={simulationTick}");
                 Clock.Instance.PauseIncrementing();
                 return;
             }
@@ -98,8 +102,13 @@ namespace Lockstep
 
             SelfPlayer.WriteInput(currentTick);
 
+            // Debug.LogError($"trying to simulate {simulationTick} for the self");
             SelfPlayer.Simulate(simulationTick);
+            // Debug.LogError($"trying to simulate {simulationTick} for the peer");
             PeerPlayer.Simulate(simulationTick);
+
+            SelfPlayer.DisposeInputs(simulationTick);
+            PeerPlayer.DisposeInputs(simulationTick);
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)
@@ -112,13 +121,13 @@ namespace Lockstep
                 }
             }
         }
-        
+
         void HandlePlayerMetadataMsg(object sender, MessageReceivedEventArgs e)
         {
             using (Message message = e.GetMessage())
             {
                 PlayerMetadataMsg msg = message.Deserialize<PlayerMetadataMsg>();
-                PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: msg.Name, connectionManager: ConnectionManager);
+                PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: msg.Name);
                 m_PeerPlayerMetadataReceived = true;
             }
         }

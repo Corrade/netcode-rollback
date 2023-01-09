@@ -52,7 +52,7 @@ namespace Lockstep
     {
         ushort m_KeysJustPressed;
         ushort m_KeysCurrentlyPressed;
-        ushort m_LatestAckReceived;
+        ushort m_NextTickToSend;
 
         // Refactor
         Dictionary<ushort, KeyCode> m_Binds = new Dictionary<ushort, KeyCode>{
@@ -62,16 +62,26 @@ namespace Lockstep
             { InputMasks.Kick, KeyCode.LeftShift }
         };
 
-        protected override void Awake()
+        void Awake()
         {
-            base.Awake();
             AssertInputsBound();
         }
 
-        public override void Initialise(ConnectionManager connectionManager)
+        public override void Initialise()
         {
-            base.Initialise(connectionManager);
-            connectionManager.AddOnMessageReceived(OnMessageReceived);
+            ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
+
+            m_KeysJustPressed = 0;
+            m_KeysCurrentlyPressed = 0;
+
+            // The tick before the first simulation tick
+            // We need the tick before since simulation depends on prior ticks
+            m_NextTickToSend = TickService.Subtract(TickService.Subtract(TickService.StartTick, Settings.InputDelayTicks), 1);
+
+            m_InputBuffer.Initialise(
+                startInclusive: m_NextTickToSend,
+                endExclusive: TickService.StartTick
+            );
         }
 
         void Update()
@@ -92,29 +102,43 @@ namespace Lockstep
             }
         }
 
+        public override void DisposeInputs(ushort tickJustSimulated)
+        {
+            m_InputBuffer.StartInclusive = TickService.Min(tickJustSimulated, m_NextTickToSend);
+        }
+
         public void WriteInput(ushort currentTick)
         {
-            m_InputHistory[currentTick] = (ushort)(m_KeysCurrentlyPressed | m_KeysJustPressed);
+            Assert.IsTrue(!m_InputBuffer.HasInput(currentTick));
+            m_InputBuffer.WriteInput(currentTick, (ushort)(m_KeysCurrentlyPressed | m_KeysJustPressed));
             m_KeysJustPressed = 0;
+            m_InputBuffer.EndExclusive = TickService.Add(currentTick, 1);
         }
 
-        public void SendUnackedInputs(ushort currentTick)
+        public void SendUnackedInputs(ushort untilTickExclusive)
         {
-            // TODO: for m_LatestAckReceived to current tick inclusive etc.
-            // if nothing has been acked yet then it's t he start of the game and the peer is waiting on currentTick-InputDelay
-            // deal with invalid input vs no input
-            // should never send an invalid input
-            // there may be a problem in invalidating input once the ticks wrap around -
-            // perhaps change the check in game loop from "peer.hasinput(t)" to "peer.latestinputreceived >= t"
-            // yeah perhaps remove or rewrite hasinput to be like the above
-            ;
-        }
+            // Debug.Log($"SendUnackedInputs from [{m_NextTickToSend}, {currentTick}) with buffer [{m_InputBuffer.StartInclusive}, {m_InputBuffer.EndExclusive})");
 
-        void AssertInputsBound()
-        {
-            foreach (ushort inputMask in InputMasks.AllMasks)
+            List<ushort> inputs = new List<ushort>();
+
+            for (ushort t = m_NextTickToSend; TickService.IsBefore(t, untilTickExclusive); t = TickService.Add(t, 1))
             {
-                Assert.IsTrue(m_Binds.ContainsKey(inputMask));
+                inputs.Add(m_InputBuffer.GetRawInput(t));
+            }
+
+            if (inputs.Count == 0)
+            {
+                return;
+            }
+
+            SendInputs(startTick: m_NextTickToSend, inputs: inputs.ToArray());
+        }
+
+        void SendInputs(ushort startTick, ushort[] inputs)
+        {
+            using (Message msg = InputMsg.CreateMessage(startTick, inputs))
+            {
+                ConnectionManager.Instance.SendMessage(msg, SendMode.Unreliable);
             }
         }
 
@@ -135,11 +159,18 @@ namespace Lockstep
             {
                 InputAckMsg msg = message.Deserialize<InputAckMsg>();
 
-                // Update the latest ack received
-                if (TickService.IsTickAfter(msg.LatestTickReceived, m_LatestAckReceived))
+                if (TickService.IsAfter(msg.ReceivedUntilTickExclusive, m_NextTickToSend))
                 {
-                    m_LatestAckReceived = msg.LatestTickReceived;
+                    m_NextTickToSend = msg.ReceivedUntilTickExclusive;
                 }
+            }
+        }
+
+        void AssertInputsBound()
+        {
+            foreach (ushort inputMask in InputMasks.AllMasks)
+            {
+                Assert.IsTrue(m_Binds.ContainsKey(inputMask));
             }
         }
     }

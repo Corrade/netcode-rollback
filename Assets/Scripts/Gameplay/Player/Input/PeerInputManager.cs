@@ -14,15 +14,16 @@ namespace Lockstep
 {
     public class PeerInputManager : InputManager
     {
-        public override void Initialise(ConnectionManager connectionManager)
+        public override void Initialise()
         {
-            base.Initialise(connectionManager);
-            connectionManager.AddOnMessageReceived(OnMessageReceived);
-        }
+            ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
 
-        void WriteInput(ushort tick, ushort input)
-        {
-            m_InputHistory[tick] = input;
+            ushort tickBeforeFirstSimulationTick = TickService.Subtract(TickService.Subtract(TickService.StartTick, Settings.InputDelayTicks), 1);
+
+            m_InputBuffer.Initialise(
+                startInclusive: tickBeforeFirstSimulationTick,
+                endExclusive: tickBeforeFirstSimulationTick
+            );
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)
@@ -42,17 +43,33 @@ namespace Lockstep
             {
                 InputMsg msg = message.Deserialize<InputMsg>();
 
-                // TODO: for all inputs in this packet, add to the input history
+                if (TickService.IsAfter(msg.EndTickExclusive, m_InputBuffer.EndExclusive))
+                {
+                    ushort tick = msg.StartTick;
 
-                SendAck(msg.EndTick);
+                    foreach (ushort input in msg.Inputs)
+                    {
+                        // Don't overwrite inputs
+                        if (!m_InputBuffer.HasInput(tick))
+                        {
+                            m_InputBuffer.WriteInput(tick, input);
+                        }
+
+                        tick = TickService.Add(tick, 1);
+                    }
+
+                    m_InputBuffer.EndExclusive = msg.EndTickExclusive;
+                }
+
+                SendInputAck(msg.EndTickExclusive);
             }
         }
 
-        void SendAck(ushort tick)
+        void SendInputAck(ushort receivedUntilTickExclusive)
         {
-            using (Message msg = InputAckMsg.CreateMessage(tick))
+            using (Message msg = InputAckMsg.CreateMessage(receivedUntilTickExclusive))
             {
-                m_ConnectionManager.SendMessage(msg, SendMode.Unreliable);
+                ConnectionManager.Instance.SendMessage(msg, SendMode.Unreliable);
             }
         }
     }

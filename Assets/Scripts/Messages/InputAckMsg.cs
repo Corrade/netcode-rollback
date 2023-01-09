@@ -10,31 +10,31 @@ namespace Lockstep
 {
     public class InputAckMsg : IDarkRiftSerializable
     {
-        public ushort LatestTickReceived { get; private set; }
+        public ushort ReceivedUntilTickExclusive { get; private set; }
 
         public InputAckMsg() {}
 
-        public InputAckMsg(ushort latestTickReceived)
+        public InputAckMsg(ushort receivedUntilTickExclusive)
         {
-            LatestTickReceived = latestTickReceived;
+            ReceivedUntilTickExclusive = receivedUntilTickExclusive;
         }
 
-        public static Message CreateMessage(ushort latestTickReceived)
+        public static Message CreateMessage(ushort receivedUntilTickExclusive)
         {
             return Message.Create(
                 Tags.InputAck,
-                new InputAckMsg(latestTickReceived)
+                new InputAckMsg(receivedUntilTickExclusive)
             );
         }
 
         public void Deserialize(DeserializeEvent e)
         {
-            LatestTickReceived = e.Reader.ReadUInt16();
+            ReceivedUntilTickExclusive = e.Reader.ReadUInt16();
         }
 
         public void Serialize(SerializeEvent e)
         {
-            e.Writer.Write(LatestTickReceived);
+            e.Writer.Write(ReceivedUntilTickExclusive);
         }
     }
 }
