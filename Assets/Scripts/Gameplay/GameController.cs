@@ -23,7 +23,13 @@ namespace Lockstep
         [SerializeField]
         public PeerPlayer PeerPlayer;
 
+        public event Action MatchStarted;
+        public event Action MatchEnded;
+        public event Action RoundStarted;
+        public event Action RoundEnded;
+
         bool m_PeerPlayerMetadataReceived = false;
+        const float m_IntermissionDurationSec = 0.8f;
 
         void Awake()
         {
@@ -37,12 +43,25 @@ namespace Lockstep
         {
             ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
 
+            SelfPlayer.LifeLost += OnLifeLost;
+            PeerPlayer.LifeLost += OnLifeLost;
+
+            /*
+            // Debug
+            {
+                SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: "self");
+                PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: "peer");
+                StartMatch();
+                return;
+            }
+            */
+
             StartCoroutine(PreGame());
         }
 
         void OnDestroy()
         {
-            Clock.Instance.TickUpdated -= OnTickUpdated;
+            Clock.Instance.TickUpdated -= GameLoop;
         }
 
         IEnumerator PreGame()
@@ -55,8 +74,7 @@ namespace Lockstep
             // Send client player metadata to peer and wait for theirs
             yield return PlayerMetadataSync();
 
-            // Send self player metadata to peer
-            StartGame();
+            StartMatch();
         }
 
         IEnumerator PlayerMetadataSync()
@@ -74,26 +92,65 @@ namespace Lockstep
             }
         }
 
-        void StartGame()
+        void StartMatch()
         {
-            SpawnManager.TeleportToSpawn(SelfPlayer);
-            SpawnManager.TeleportToSpawn(PeerPlayer);
-            SelfPlayer.ResetLives();
-            PeerPlayer.ResetLives();
+            ResetForMatch();
+            MatchStarted?.Invoke();
+            RoundStarted?.Invoke();
+        }
 
-            Clock.Instance.TickUpdated += OnTickUpdated;
+        void StartRound()
+        {
+            ResetForRound();
+            RoundStarted?.Invoke();
+        }
+
+        void ResetForMatch()
+        {
+            SelfPlayer.ResetForMatch();
+            PeerPlayer.ResetForMatch();
+
+            ResetForRound();
+
             Clock.Instance.Begin();
         }
 
-        void OnTickUpdated(ushort currentTick)
+        void ResetForRound()
         {
+            SelfPlayer.ResetForRound();
+            PeerPlayer.ResetForRound();
+
+            SpawnManager.TeleportToSpawn(SelfPlayer);
+            SpawnManager.TeleportToSpawn(PeerPlayer);
+
+            Clock.Instance.TickUpdated += GameLoop;
+            Clock.Instance.ResumeIncrementing();
+        }
+
+        void StopRound()
+        {
+            Clock.Instance.TickUpdated -= GameLoop;
+            Clock.Instance.PauseIncrementing();
+        }
+
+        void GameLoop(ushort currentTick)
+        { 
+            /*
+            // Debug
+            {
+                ushort s = TickService.Subtract(currentTick, Settings.InputDelayTicks);
+                SelfPlayer.WriteInput(currentTick);
+                SelfPlayer.Simulate(s);
+                return;
+            }
+            */
+
             ushort simulationTick = TickService.Subtract(currentTick, Settings.InputDelayTicks);
 
             SelfPlayer.SendUnackedInputs(untilTickExclusive: currentTick);
 
             if (!PeerPlayer.HasInput(simulationTick))
             {
-                // Debug.Log($"tickupdated => peer player doesn't hvae input for sim={simulationTick}");
                 Clock.Instance.PauseIncrementing();
                 return;
             }
@@ -102,13 +159,41 @@ namespace Lockstep
 
             SelfPlayer.WriteInput(currentTick);
 
-            // Debug.LogError($"trying to simulate {simulationTick} for the self");
             SelfPlayer.Simulate(simulationTick);
-            // Debug.LogError($"trying to simulate {simulationTick} for the peer");
             PeerPlayer.Simulate(simulationTick);
 
-            SelfPlayer.DisposeInputs(simulationTick);
-            PeerPlayer.DisposeInputs(simulationTick);
+            SelfPlayer.DisposeInputs(tickJustSimulated: simulationTick);
+            PeerPlayer.DisposeInputs(tickJustSimulated: simulationTick);
+        }
+
+        void OnLifeLost(MetadataManager metadataManager)
+        {
+            StartCoroutine(Intermission(matchIsOver: (metadataManager.IsDefeated)));
+        }
+
+        IEnumerator Intermission(bool matchIsOver)
+        {
+            StopRound();
+
+            if (matchIsOver)
+            {
+                MatchEnded?.Invoke();
+            }
+            else
+            {
+                RoundEnded?.Invoke();
+            }
+
+            yield return new WaitForSecondsRealtime(m_IntermissionDurationSec);
+
+            if (matchIsOver)
+            {
+                Debug.Log("Match over");
+            }
+            else
+            {
+                StartRound();
+            }
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)

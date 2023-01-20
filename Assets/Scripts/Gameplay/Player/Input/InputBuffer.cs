@@ -29,7 +29,24 @@ namespace Lockstep
             {
                 m_EndExclusive = value;
 
-                // Assert that the end is not close to wrapping around to be before the start
+                /*
+                Assert that the end is not close to wrapping around to be
+                before the start
+
+                This fails in offline testing after EndExclusive exceeds
+                SmallTickThreshold, i.e. becomes not "small".
+
+                This is because IsBefore() takes into account the wrap-around
+                of tick numbers. A "large" tick value is considered to precede a
+                "small" value. Initially, StartInclusive is "large" and
+                therefore less than EndExclusive. StartInclusive remains fixed
+                during offline testing whereas EndExclusive increments.
+                Eventually, EndExclusive becomes not "small" and so this
+                assertion fails.
+
+                This is fine since StartInclusive would not remain
+                fixed in online play.
+                */
                 Assert.IsFalse(TickService.IsBefore(TickService.Add(EndExclusive, 100), StartInclusive));
 
                 AssertStartIsBeforeOrEqualToEnd();

@@ -28,7 +28,6 @@ namespace Lockstep
         IClient m_PeerClient; // Connection from peer client (reader) to self server (us: writer)
 
         bool m_SetupComplete = false;
-        bool m_PeerSetupCompleteReceived = false;
 
         void Awake()
         {
@@ -42,8 +41,6 @@ namespace Lockstep
 
             m_SelfClient = GetComponent<UnityClient>();
             m_SelfServer = GetComponent<XmlUnityServer>();
-
-            AddOnMessageReceived(OnMessageReceived);
         }
 
         public IEnumerator Setup()
@@ -54,7 +51,6 @@ namespace Lockstep
             }
 
             m_SetupComplete = false;
-            m_PeerSetupCompleteReceived = false;
 
             // Setup self server
             yield return SetupServer(Settings.SelfPort);
@@ -64,10 +60,6 @@ namespace Lockstep
 
             // Wait until peer client is connected to self server
             yield return new WaitUntil(() => m_PeerClient != null && (m_PeerClient.ConnectionState == ConnectionState.Connected));
-
-            // TODO unnecessary?
-            // Send client setup completion to peer and wait for theirs
-            yield return SetupCompleteSync();
 
             Debug.Log("Setup complete");
 
@@ -226,21 +218,6 @@ namespace Lockstep
             }
         }
 
-        IEnumerator SetupCompleteSync()
-        {
-            SendSetupComplete();
-
-            yield return new WaitUntil(() => m_PeerSetupCompleteReceived);
-        }
-
-        void SendSetupComplete()
-        {
-            using (Message msg = SetupCompleteMsg.CreateMessage())
-            {
-                SendMessage(msg, SendMode.Reliable);
-            }
-        }
-
         void OnClientConnected(object sender, ClientConnectedEventArgs e)
         {
             if (m_PeerClient != null && (m_PeerClient.ConnectionState == ConnectionState.Connected))
@@ -254,25 +231,6 @@ namespace Lockstep
         void OnClientDisconnected(object sender, ClientDisconnectedEventArgs e)
         {
             Debug.LogError("Peer client disconnected from self server");
-        }
-
-        void OnMessageReceived(object sender, DarkRift.Client.MessageReceivedEventArgs e)
-        {
-            using (Message message = e.GetMessage() as Message)
-            {
-                if (message.Tag == Tags.SetupComplete)
-                {
-                    HandleSetupCompleteMsg(sender, e);
-                }
-            }
-        }
-
-        void HandleSetupCompleteMsg(object sender, DarkRift.Client.MessageReceivedEventArgs e)
-        {
-            using (Message message = e.GetMessage())
-            {
-                m_PeerSetupCompleteReceived = true;
-            }
         }
     }
 }

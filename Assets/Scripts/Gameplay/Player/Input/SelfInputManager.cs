@@ -69,14 +69,14 @@ namespace Lockstep
 
         public override void Initialise()
         {
+            ConnectionManager.Instance.RemoveOnMessageReceived(OnMessageReceived);
             ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
 
             m_KeysJustPressed = 0;
             m_KeysCurrentlyPressed = 0;
 
-            // The tick before the first simulation tick
             // We need the tick before since simulation depends on prior ticks
-            m_NextTickToSend = TickService.Subtract(TickService.Subtract(TickService.StartTick, Settings.InputDelayTicks), 1);
+            m_NextTickToSend = TickService.Subtract(TickService.StartSimulationTick, 1);
 
             m_InputBuffer.Initialise(
                 startInclusive: m_NextTickToSend,

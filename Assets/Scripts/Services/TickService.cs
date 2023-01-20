@@ -11,8 +11,10 @@ namespace Lockstep
         public const ushort StartTick = 0;
         public const ushort MaxTick = 65530; // A bit less than the actual maximum of a ushort so that incrementing won't overflow
 
-        static readonly ushort LargeTickThreshold = (ushort)(MaxTick-SecondsToTicks(30));
-        static readonly ushort SmallTickThreshold = SecondsToTicks(30);
+        static readonly ushort LargeTickThreshold = (ushort)(MaxTick-SecondsToTicks(100));
+        static readonly ushort SmallTickThreshold = SecondsToTicks(100);
+
+        public static ushort StartSimulationTick => TickService.Subtract(TickService.StartTick, Settings.InputDelayTicks);
 
         public static ushort Add(ushort tick, int x)
         {

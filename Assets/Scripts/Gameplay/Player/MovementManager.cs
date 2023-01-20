@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 using DarkRift;
 using DarkRift.Client;
@@ -16,9 +17,9 @@ namespace Lockstep
     [RequireComponent(typeof(InputManager), typeof(BoxCollider2D), typeof(Rigidbody2D))]
     public class MovementManager : MonoBehaviour
     {
-        [Tooltip("Objects in these layers will be considered as ground")]
+        [Tooltip("Objects in these layers will be considered as obstacles")]
         [SerializeField]
-        string[] GroundLayers = new string[]{ "Ground" };
+        string[] ObstacleLayers = new string[]{ "Obstacle" };
 
         [Tooltip("Distance from the bottom of the character to raycast for the ground")]
         [SerializeField]
@@ -28,11 +29,9 @@ namespace Lockstep
         [SerializeField]
         float MaximumGroundAngle = 45f;
 
-        [Tooltip("Horizontal speed")]
         [SerializeField]
         float GroundSpeed = 16f;
 
-        [Tooltip("Air strafe speed")]
         [SerializeField]
         float AirStrafeSpeed = 7f;
 
@@ -40,13 +39,23 @@ namespace Lockstep
         [SerializeField]
         float AirStrafeInfluenceSpeed = 7f;
 
-        [Tooltip("Force applied downward when in the air")]
         [SerializeField]
         float GravityDownForce = 130f;
 
-        [Tooltip("This velocity is immediately applied to the player when they jump")]
         [SerializeField]
-        float JumpVelocity = 40f;
+        float JumpMagnitude = 40f;
+
+        [SerializeField]
+        float KickMagnitude = 35f;
+
+        [Tooltip("Angle between the horizontal and the kick")]
+        [SerializeField]
+        float KickAngle = 60f;
+
+        [SerializeField]
+        GameObject KickCollider;
+
+        Vector3 m_KickVector;
 
         InputManager m_InputManager;
         BoxCollider2D m_CollisionCollider;
@@ -56,14 +65,31 @@ namespace Lockstep
         bool m_IsGrounded;
         Vector2 m_GroundNormal;
         Collider2D m_GroundCollider;
-        bool m_IsFacingLeft;
+        bool m_IsFacingLeft = false;
         Vector2 m_CandidatePosition;
+        bool m_IsKicking = false;
 
         void Awake()
         {
             m_InputManager = GetComponent<InputManager>();
             m_CollisionCollider = GetComponent<BoxCollider2D>();
             m_RB2D = GetComponent<Rigidbody2D>();
+
+            Assert.IsTrue(KickCollider != null);
+            Reset();
+
+            m_KickVector = (Quaternion.AngleAxis(KickAngle, Vector3.forward) * Vector3.left).normalized;
+        }
+
+        public void Reset()
+        {
+            m_CandidateVelocity = Vector2.zero;
+            m_IsGrounded = false;
+            m_GroundNormal = Vector2.zero;
+            m_GroundCollider = null;
+            m_IsFacingLeft = false;
+            m_CandidatePosition = Vector2.zero;
+            StopKick();
         }
 
         public void RunMovement(ushort tick)
@@ -79,6 +105,7 @@ namespace Lockstep
 
             GroundCheck();
             ProposeVelocity(tick, deltaTime);
+            AdjustVelocityForObstructions();
 
             // Move along the final m_CandidateVelocity
             m_CandidatePosition += m_CandidateVelocity * deltaTime;
@@ -97,6 +124,7 @@ namespace Lockstep
         {
             m_CandidateVelocity = Vector2.zero;
             m_RB2D.MovePosition(position);
+            transform.position = position; // In case the above call to the physics system is slow
             m_IsFacingLeft = faceLeft;
         }
 
@@ -121,7 +149,7 @@ namespace Lockstep
                 0f,
                 Vector2.down,
                 GroundCheckDistance,
-                LayerMask.GetMask(GroundLayers)
+                LayerMask.GetMask(ObstacleLayers)
             ))
             {
                 // Ignore if nothing was collided with
@@ -143,6 +171,8 @@ namespace Lockstep
                 m_GroundNormal = hit.normal;
                 m_GroundCollider = hit.collider;
                 m_CandidatePosition = hit.centroid;
+
+                StopKick();
 
                 // Prevent scaling steep walls with jump resets
                 if (!IsTooSteep(hit.normal))
@@ -180,7 +210,7 @@ namespace Lockstep
                     m_CandidateVelocity += VectorExtensions.VectorDownSurface(m_GroundNormal) * GravityDownForce * deltaTime;
                 }
                 // Airborne
-                else
+                else if (!m_IsKicking)
                 {
                     if (m_InputManager.GetInputDown(tick, InputMasks.Kick))
                     {
@@ -211,27 +241,124 @@ namespace Lockstep
 
             m_CandidateVelocity = new Vector2(
                 m_CandidateVelocity.x,
-                JumpVelocity
+                JumpMagnitude
             );
         }
 
         void Kick()
         {
-            // TODO
+            m_IsKicking = true;
+            KickCollider.SetActive(true);
+
+            SetFacingDirection();
+
+            m_CandidateVelocity = KickMagnitude * m_KickVector;
+            
+            if (!m_IsFacingLeft)
+            {
+                m_CandidateVelocity.x *= -1;
+            };
+        }
+
+        void StopKick()
+        {
+            m_IsKicking = false;
+            KickCollider.SetActive(false);
+        }
+
+        // Checks for obstructions and sets m_CandidatePosition and CandidateVelocity appropriately if an obstruction is detected
+        void AdjustVelocityForObstructions()
+        {
+            // Cast the collision collider in the direction of CandidateVelocity
+            foreach (RaycastHit2D hit in Physics2D.BoxCastAll(
+                m_CandidatePosition,
+                m_CollisionCollider.size,
+                0f,
+                m_CandidateVelocity.normalized,
+                m_CandidateVelocity.magnitude * Time.fixedDeltaTime,
+                LayerMask.GetMask(ObstacleLayers)
+            ))
+            {
+                // Ignore if nothing was collided with
+                if (hit.collider == null)
+                {
+                    continue;
+                }
+
+                // Ignore if the collider isn't actually being moved into, i.e. if the player is just inside/on the collider
+                if (!IsMovingInto(m_CandidateVelocity.normalized, hit.normal))
+                {
+                    continue;
+                }
+
+                // Snap to the obstruction
+                m_CandidatePosition = hit.centroid;
+
+                // Subtract the distance that was moved by snapping
+                float remainingMagnitude = (m_CandidateVelocity.x < 0 ? -1 : 1) * Mathf.Abs(Mathf.Abs(m_CandidateVelocity.magnitude) - hit.distance);
+
+                if (m_IsGrounded)
+                {
+                    if (IsTooSteep(hit.normal))
+                    {
+                        // Moving from ground -> steep ground: stop motion
+                        m_CandidateVelocity = Vector2.zero;
+                    }
+                    else
+                    {
+                        if (!IsTooSteep(m_GroundNormal))
+                        {
+                            // Moving from regular ground -> regular ground: reorientate movement along the next ground
+                            m_CandidateVelocity = remainingMagnitude * VectorExtensions.VectorAlongSurface(hit.normal);
+                        }
+                        else
+                        {
+                            // Moving from steep ground -> regular ground: stop motion
+                            m_CandidateVelocity = Vector2.zero;
+                        }
+                    }
+                }
+                else
+                {
+                    if (!IsCeiling(hit.normal) && m_CandidateVelocity.y > 0 && IsMovingInto(m_CandidateVelocity, hit.normal))
+                    {
+                        // Running into a non-ceiling ground while rising in the air: ignore horizontal movement and just keep rising
+                        m_CandidateVelocity = new Vector2(0f, m_CandidateVelocity.y);
+                    }
+                    else
+                    {
+                        // Moving from air -> ground: stop motion
+                        m_CandidateVelocity = Vector2.zero;
+                    }
+                }
+            }
         }
 
         void SetFacingDirection()
         {
+            Vector3 newScale = transform.localScale;
+
             if (m_CandidateVelocity.x < 0)
             {
                 m_IsFacingLeft = true;
-                transform.localScale = new Vector3(-1f, 1f, 1f);
+
+                newScale.x = -1 * Math.Abs(newScale.x);
+                transform.localScale = newScale;
             }
             else if (m_CandidateVelocity.x > 0)
             {
                 m_IsFacingLeft = false;
-                transform.localScale = new Vector3(1f, 1f, 1f);
+
+                newScale.x = Math.Abs(newScale.x);
+                transform.localScale = newScale;
             }
+        }
+
+        // Returns whether or not direction is moving into the surface with the given normal. Assumes both parameters are normalized.
+        bool IsMovingInto(Vector2 direction, Vector2 normal)
+        {
+            // If direction is within +-90 degrees of the vector moving into the surface
+            return Vector2.Dot(-normal, direction) > 0.01f;
         }
 
         // Given the normal of a ground, returns whether or not it's too steep

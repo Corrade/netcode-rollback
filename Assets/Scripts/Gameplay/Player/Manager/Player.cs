@@ -17,37 +17,56 @@ namespace Lockstep
     [RequireComponent(typeof(MetadataManager), typeof(MovementManager), typeof(InputManager)), RequireComponent(typeof(CollisionManager))]
     public abstract class Player : MonoBehaviour
     {
-        public int Id { get { return m_MetadataManager.Id; } }
+        public int Id => MetadataManager.Id;
+        public int Lives => MetadataManager.Lives;
+        public bool IsDefeated => MetadataManager.IsDefeated;
 
         public event Action<MetadataManager> MetadataUpdated
         {
-            add
-            {
-                m_MetadataManager.MetadataUpdated += value;
-            }
-
-            remove
-            {
-                m_MetadataManager.MetadataUpdated -= value;
-            }
+            add { MetadataManager.MetadataUpdated += value; }
+            remove { MetadataManager.MetadataUpdated -= value; }
         }
 
+        public event Action<MetadataManager> LifeLost
+        {
+            add { MetadataManager.LifeLost += value; }
+            remove { MetadataManager.LifeLost -= value; }
+        }
+
+        public MetadataManager MetadataManager { get; private set; }
+
         protected abstract InputManager m_InputManager { get; }
-        protected MetadataManager m_MetadataManager;
         protected MovementManager m_MovementManager;
         protected CollisionManager m_CollisionManager;
 
         protected virtual void Awake()
         {
-            m_MetadataManager = GetComponent<MetadataManager>();
+            MetadataManager = GetComponent<MetadataManager>();
             m_MovementManager = GetComponent<MovementManager>();
             m_CollisionManager = GetComponent<CollisionManager>();
+
+            foreach (PlayerReference playerReference in GetComponentsInChildren<PlayerReference>(includeInactive: true))
+            {
+                playerReference.Initialise(this);
+            }
         }
 
         public void Initialise(int id, string name)
         {
-            m_MetadataManager.Initialise(id, name);
+            MetadataManager.Initialise(id, name);
             m_InputManager.Initialise();
+            m_MovementManager.Reset();
+        }
+
+        public void ResetForMatch()
+        {
+            MetadataManager.ResetLives();
+            ResetForRound();
+        }
+
+        public void ResetForRound()
+        {
+            m_MovementManager.Reset();
         }
 
         public bool HasInput(ushort tick)
@@ -69,9 +88,9 @@ namespace Lockstep
             m_MovementManager.Teleport(position, faceLeft);
         }
 
-        public void ResetLives()
+        public void LoseLife()
         {
-            m_MetadataManager.ResetLives();
+            MetadataManager.LoseLife();
         }
 
         public void DisposeInputs(ushort tickJustSimulated)

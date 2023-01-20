@@ -16,13 +16,14 @@ namespace Lockstep
     {
         public override void Initialise()
         {
+            ConnectionManager.Instance.RemoveOnMessageReceived(OnMessageReceived);
             ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
 
-            ushort tickBeforeFirstSimulationTick = TickService.Subtract(TickService.Subtract(TickService.StartTick, Settings.InputDelayTicks), 1);
+            ushort tickBeforeStartSimulationTick = TickService.Subtract(TickService.StartSimulationTick, 1);
 
             m_InputBuffer.Initialise(
-                startInclusive: tickBeforeFirstSimulationTick,
-                endExclusive: tickBeforeFirstSimulationTick
+                startInclusive: tickBeforeStartSimulationTick,
+                endExclusive: tickBeforeStartSimulationTick
             );
         }
 
