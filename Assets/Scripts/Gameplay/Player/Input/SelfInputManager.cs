@@ -117,7 +117,9 @@ namespace Lockstep
 
         public void SendUnackedInputs(ushort untilTickExclusive)
         {
-            // Debug.Log($"SendUnackedInputs from [{m_NextTickToSend}, {currentTick}) with buffer [{m_InputBuffer.StartInclusive}, {m_InputBuffer.EndExclusive})");
+            /*
+            DebugUI.Instance.Write("inputs", $"SendUnackedInputs from [{m_NextTickToSend}, {untilTickExclusive}) with buffer [{m_InputBuffer.StartInclusive}, {m_InputBuffer.EndExclusive})");
+            */
 
             List<ushort> inputs = new List<ushort>();
 

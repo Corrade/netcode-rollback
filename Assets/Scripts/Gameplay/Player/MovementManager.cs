@@ -113,7 +113,6 @@ namespace Lockstep
             if (m_CandidatePosition != m_RB2D.position)
             {
                 m_RB2D.MovePosition(m_CandidatePosition);
-                // MovePosition() is resolved during the next physics update
             }
 
             SetFacingDirection();
@@ -123,9 +122,10 @@ namespace Lockstep
         public void Teleport(Vector2 position, bool faceLeft)
         {
             m_CandidateVelocity = Vector2.zero;
-            m_RB2D.MovePosition(position);
-            transform.position = position; // In case the above call to the physics system is slow
             m_IsFacingLeft = faceLeft;
+
+            // Perform the teleport instantaneously (don't wait for the next physics step)
+            transform.position = position;
         }
 
         // Check whether or not the player is grounded and set the related variables appropriately
@@ -209,12 +209,13 @@ namespace Lockstep
                 {
                     m_CandidateVelocity += VectorExtensions.VectorDownSurface(m_GroundNormal) * GravityDownForce * deltaTime;
                 }
-                // Airborne
+                // Airborne and not kicking
                 else if (!m_IsKicking)
                 {
                     if (m_InputManager.GetInputDown(tick, InputMasks.Kick))
-                    {
+                    {            
                         Kick();
+                        return;
                     }
 
                     // Air strafing

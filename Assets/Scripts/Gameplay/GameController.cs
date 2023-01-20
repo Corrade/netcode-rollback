@@ -36,7 +36,9 @@ namespace Lockstep
             Assert.IsTrue(SelfPlayer != null);
             Assert.IsTrue(PeerPlayer != null);
 
-            // Physics.autoSimulation = false;
+            // Progress physics only when Physics2D.Simulate() is called, as
+            // opposed to automatically in FixedUpdate()
+            Physics2D.simulationMode = SimulationMode2D.Script;
         }
 
         void Start()
@@ -47,7 +49,7 @@ namespace Lockstep
             PeerPlayer.LifeLost += OnLifeLost;
 
             /*
-            // Debug
+            // Debug singleplayer
             {
                 SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: "self");
                 PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: "peer");
@@ -129,22 +131,12 @@ namespace Lockstep
 
         void StopRound()
         {
-            Clock.Instance.TickUpdated -= GameLoop;
             Clock.Instance.PauseIncrementing();
+            Clock.Instance.TickUpdated -= GameLoop;
         }
 
         void GameLoop(ushort currentTick)
         { 
-            /*
-            // Debug
-            {
-                ushort s = TickService.Subtract(currentTick, Settings.InputDelayTicks);
-                SelfPlayer.WriteInput(currentTick);
-                SelfPlayer.Simulate(s);
-                return;
-            }
-            */
-
             ushort simulationTick = TickService.Subtract(currentTick, Settings.InputDelayTicks);
 
             SelfPlayer.SendUnackedInputs(untilTickExclusive: currentTick);
@@ -161,6 +153,8 @@ namespace Lockstep
 
             SelfPlayer.Simulate(simulationTick);
             PeerPlayer.Simulate(simulationTick);
+
+            Physics2D.Simulate(TickService.TimeBetweenTicksSec);
 
             SelfPlayer.DisposeInputs(tickJustSimulated: simulationTick);
             PeerPlayer.DisposeInputs(tickJustSimulated: simulationTick);
