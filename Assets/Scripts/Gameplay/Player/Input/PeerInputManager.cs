@@ -68,10 +68,7 @@ namespace Lockstep
 
         void SendInputAck(ushort receivedUntilTickExclusive)
         {
-            using (Message msg = InputAckMsg.CreateMessage(receivedUntilTickExclusive))
-            {
-                ConnectionManager.Instance.SendMessage(msg, SendMode.Unreliable);
-            }
+            ConnectionManager.Instance.SendMessage(() => InputAckMsg.CreateMessage(receivedUntilTickExclusive), SendMode.Unreliable);
         }
     }
 }

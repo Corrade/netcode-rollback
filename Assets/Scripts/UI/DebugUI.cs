@@ -39,9 +39,9 @@ namespace Lockstep
 
         // Writes a string into a given channel, replacing everything in the
         // same channel
-        public void Write(string channel, string value)
+        public static void Write(string channel, string value)
         {
-            m_DebugText[channel] = value;
+            Instance.m_DebugText[channel] = value;
         }
     }
 }

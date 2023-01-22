@@ -80,18 +80,28 @@ namespace Lockstep
             m_SelfClient.MessageReceived -= handler;
         }
 
-        public void SendMessage(Message message, SendMode sendMode)
+        public void SendMessage(Func<Message> createMessage, SendMode sendMode)
         {
             /*
-            DO NOT PASS MESSAGES INTO COROUTINES
+            DO NOT PASS MESSAGES DIRECTLY INTO COROUTINES
 
-            Removing this solved a bug related to malformed messages. I presume
-            that messages are automatically disposed of in the process of
-            the coroutine's execution.
+            Removing this behaviour solved a bug related to malformed messages.
+            I presume that messages are automatically disposed of during the
+            coroutine's execution.
+
+            To work around this, pass a delegate that returns a message.
 
             https://www.darkriftnetworking.com/DarkRift2/Docs/2.10.1/advanced/recycling.html
             */
 
+            Assert.IsTrue(m_PeerClient != null);
+            Assert.IsTrue(m_PeerClient.ConnectionState == ConnectionState.Connected);
+
+            StartCoroutine(SendMessageUnderSimulatedConditions(createMessage, sendMode));
+        }
+
+        IEnumerator SendMessageUnderSimulatedConditions(Func<Message> createMessage, SendMode sendMode)
+        {
             /*
             ARTIFICIAL PACKET LOSS MUST BE SENDER-SIDE
 
@@ -103,11 +113,6 @@ namespace Lockstep
             completed their job by pushing the packet to the application layer.
             */
 
-            /*
-            TODO probably put Send() functions in the message classes themselves too
-
-            TODO re-implement below
-
             // Artifical latency
             if (Settings.ArtificialLatencyMs > 0)
             {
@@ -117,17 +122,15 @@ namespace Lockstep
             // Artificial packet loss
             if (sendMode == SendMode.Unreliable && RandomService.ReturnTrueWithProbability(Settings.ArtificialPacketLossPc))
             {
-                Debug.Log("Packet artifically dropped");
                 yield break;
             }
-            */
 
-            Assert.IsTrue(m_PeerClient != null);
-            Assert.IsTrue(m_PeerClient.ConnectionState == ConnectionState.Connected);
-
-            if (!m_PeerClient.SendMessage(message, sendMode))
+            using (Message msg = createMessage())
             {
-                Debug.Log("Failed to send message");
+                if (!m_PeerClient.SendMessage(msg, sendMode))
+                {
+                    Debug.Log("Failed to send message");
+                }
             }
         }
 

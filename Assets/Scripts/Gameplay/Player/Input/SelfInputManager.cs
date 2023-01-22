@@ -54,14 +54,6 @@ namespace Lockstep
         ushort m_KeysCurrentlyPressed;
         ushort m_NextTickToSend;
 
-        // Refactor
-        Dictionary<ushort, KeyCode> m_Binds = new Dictionary<ushort, KeyCode>{
-            { InputMasks.MoveLeft, KeyCode.A },
-            { InputMasks.MoveRight, KeyCode.D },
-            { InputMasks.Dive, KeyCode.Space },
-            { InputMasks.Kick, KeyCode.LeftShift }
-        };
-
         void Awake()
         {
             AssertInputsBound();
@@ -88,7 +80,7 @@ namespace Lockstep
         {
             foreach (ushort inputMask in InputMasks.AllMasks)
             {
-                if (Input.GetKey(m_Binds[inputMask]))
+                if (Input.GetKey(Settings.Binding[inputMask]))
                 {
                     // Set the input's bit
                     m_KeysCurrentlyPressed |= inputMask;
@@ -118,7 +110,7 @@ namespace Lockstep
         public void SendUnackedInputs(ushort untilTickExclusive)
         {
             /*
-            DebugUI.Instance.Write("inputs", $"SendUnackedInputs from [{m_NextTickToSend}, {untilTickExclusive}) with buffer [{m_InputBuffer.StartInclusive}, {m_InputBuffer.EndExclusive})");
+            DebugUI.Write("inputs", $"SendUnackedInputs from [{m_NextTickToSend}, {untilTickExclusive}) with buffer [{m_InputBuffer.StartInclusive}, {m_InputBuffer.EndExclusive})");
             */
 
             List<ushort> inputs = new List<ushort>();
@@ -138,10 +130,7 @@ namespace Lockstep
 
         void SendInputs(ushort startTick, ushort[] inputs)
         {
-            using (Message msg = InputMsg.CreateMessage(startTick, inputs))
-            {
-                ConnectionManager.Instance.SendMessage(msg, SendMode.Unreliable);
-            }
+            ConnectionManager.Instance.SendMessage(() => InputMsg.CreateMessage(startTick, inputs), SendMode.Unreliable);
         }
 
         void OnMessageReceived(object sender, DarkRift.Client.MessageReceivedEventArgs e)
@@ -172,7 +161,7 @@ namespace Lockstep
         {
             foreach (ushort inputMask in InputMasks.AllMasks)
             {
-                Assert.IsTrue(m_Binds.ContainsKey(inputMask));
+                Assert.IsTrue(Settings.Binding.ContainsKey(inputMask));
             }
         }
     }

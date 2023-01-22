@@ -16,9 +16,14 @@ namespace Lockstep
     {
         public static Clock Instance { get; private set; }
 
+        public event Action PauseChanged;
+        public event Action<ushort> TickUpdated;
+
         public ushort CurrentTick { get; private set; }
         public bool Paused { get; private set; } = false;
-        public event Action<ushort> TickUpdated;
+
+        ushort m_PausedAtTick;
+        bool m_JustUnpaused;
 
         IEnumerator m_ClockCoroutine;
 
@@ -42,19 +47,34 @@ namespace Lockstep
             }
 
             CurrentTick = TickService.StartTick;
-            Paused = false;
+            ResumeIncrementing();
             m_ClockCoroutine = NextTick();
             StartCoroutine(m_ClockCoroutine);
         }
 
         public void PauseIncrementing()
         {
+            if (Paused)
+            {
+                return;
+            }
+
             Paused = true;
+            m_PausedAtTick = CurrentTick;
+            PauseChanged?.Invoke();
         }
 
+        // Resumes at the tick after the tick that was paused at
         public void ResumeIncrementing()
         {
+            if (!Paused)
+            {
+                return;
+            }
+
+            m_JustUnpaused = true;
             Paused = false;
+            PauseChanged?.Invoke();
         }
 
         public void Stop()
@@ -66,6 +86,12 @@ namespace Lockstep
         {
             while (true)
             {
+                if (m_JustUnpaused)
+                {
+                    m_JustUnpaused = false;
+                    CurrentTick = TickService.Add(m_PausedAtTick, 1);
+                }
+
                 // Keep this first so that the start tick is ran
                 TickUpdated?.Invoke(CurrentTick);
 
@@ -75,14 +101,14 @@ namespace Lockstep
                 // in order to preserve the original cadence
                 if (!Paused)
                 {
-                    SetCurrentTick(TickService.Add(CurrentTick, 1));
+                    IncrementCurrentTick();
                 }
             }
         }
 
-        public void SetCurrentTick(ushort tick)
+        public void IncrementCurrentTick()
         {
-            CurrentTick = tick;
+            CurrentTick = TickService.Add(CurrentTick, 1);
         }
     }
 }

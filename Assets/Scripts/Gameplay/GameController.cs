@@ -28,6 +28,7 @@ namespace Lockstep
         public event Action RoundStarted;
         public event Action RoundEnded;
 
+        bool m_IsInIntermission = false;
         bool m_PeerPlayerMetadataReceived = false;
         const float m_IntermissionDurationSec = 0.8f;
 
@@ -88,10 +89,7 @@ namespace Lockstep
 
         void SendPlayerMetadata()
         {
-            using (Message msg = PlayerMetadataMsg.CreateMessage(Settings.SelfPlayerName))
-            {
-                ConnectionManager.Instance.SendMessage(msg, SendMode.Reliable);
-            }
+            ConnectionManager.Instance.SendMessage(() => PlayerMetadataMsg.CreateMessage(Settings.SelfPlayerName), SendMode.Reliable);
         }
 
         void StartMatch()
@@ -154,10 +152,10 @@ namespace Lockstep
             SelfPlayer.Simulate(simulationTick);
             PeerPlayer.Simulate(simulationTick);
 
-            Physics2D.Simulate(TickService.TimeBetweenTicksSec);
-
             SelfPlayer.DisposeInputs(tickJustSimulated: simulationTick);
             PeerPlayer.DisposeInputs(tickJustSimulated: simulationTick);
+
+            Physics2D.Simulate(TickService.TimeBetweenTicksSec);
         }
 
         void OnLifeLost(MetadataManager metadataManager)
@@ -167,6 +165,13 @@ namespace Lockstep
 
         IEnumerator Intermission(bool matchIsOver)
         {
+            if (m_IsInIntermission)
+            {
+                yield break;
+            }
+
+            m_IsInIntermission = true;
+
             StopRound();
 
             if (matchIsOver)
@@ -188,6 +193,8 @@ namespace Lockstep
             {
                 StartRound();
             }
+
+            m_IsInIntermission = false;
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)

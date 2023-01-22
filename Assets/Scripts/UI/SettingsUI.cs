@@ -63,7 +63,7 @@ namespace Lockstep
 
         void SaveSettings()
         {
-            Settings.SelfPlayerId = int.Parse(SelfPlayerIdTextInput.text);
+            Settings.SelfPlayerId = Mathf.Clamp(int.Parse(SelfPlayerIdTextInput.text), 0, 1);
             Settings.SelfPlayerName = SelfPlayerNameTextInput.text;
             Settings.SelfPort = int.Parse(SelfPortTextInput.text);
             Settings.PeerAddress = PeerAddressTextInput.text;

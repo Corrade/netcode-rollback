@@ -23,6 +23,9 @@ namespace Lockstep
         PlayerHud[] PlayerHuds = new PlayerHud[2]; // Indexed by player ID
 
         [SerializeField]
+        TMP_Text RoundEndDialogue;
+
+        [SerializeField]
         TMP_Text MatchEndDialogue;
 
         void Awake()
@@ -34,11 +37,13 @@ namespace Lockstep
             }
 
             Assert.IsTrue(GameController != null);
+            Assert.IsTrue(RoundEndDialogue != null);
             Assert.IsTrue(MatchEndDialogue != null);
         }
 
         void Start()
         {
+            RoundEndDialogue.gameObject.SetActive(false);
             MatchEndDialogue.gameObject.SetActive(false);
 
             GameController.SelfPlayer.MetadataUpdated += OnMetadataUpdated;
@@ -48,13 +53,45 @@ namespace Lockstep
             OnMetadataUpdated(GameController.SelfPlayer.MetadataManager);
             OnMetadataUpdated(GameController.PeerPlayer.MetadataManager);
 
+            GameController.SelfPlayer.LifeLost += OnLifeLost;
+            GameController.PeerPlayer.LifeLost += OnLifeLost;
+
+            GameController.RoundStarted += OnRoundStarted;
             GameController.MatchEnded += OnMatchEnded;
+
+            Clock.Instance.PauseChanged += OnPauseChanged;
+
+            DebugUI.Write("netcode", $"Input delay = {Settings.InputDelayTicks} ticks\nArtificial latency = {Settings.ArtificialLatencyMs} ms\nArtifical packet loss = {100 * Settings.ArtificialPacketLossPc}%");
         }
 
         void OnMetadataUpdated(MetadataManager metadataManager)
         {
             PlayerHuds[metadataManager.Id].Name.text = metadataManager.Name;
             PlayerHuds[metadataManager.Id].Lives.text = $"{metadataManager.Lives}/{MetadataManager.MaxLives} Lives";
+        }
+
+        void OnLifeLost(MetadataManager metadataManager)
+        {
+            if (metadataManager.IsDefeated)
+            {
+                return;
+            }
+
+            RoundEndDialogue.gameObject.SetActive(true);
+
+            if (metadataManager.Id == GameController.SelfPlayer.Id)
+            {
+                RoundEndDialogue.text = "-1";
+            }
+            else
+            {
+                RoundEndDialogue.text = "Hit!";
+            }
+        }
+
+        void OnRoundStarted()
+        {
+            RoundEndDialogue.gameObject.SetActive(false);
         }
 
         void OnMatchEnded()
@@ -69,6 +106,11 @@ namespace Lockstep
             {
                 MatchEndDialogue.text = "Victory!";
             }
+        }
+
+        void OnPauseChanged()
+        {
+            DebugUI.Write("pause", Clock.Instance.Paused ? "Paused" : "Running");
         }
     }
 }
