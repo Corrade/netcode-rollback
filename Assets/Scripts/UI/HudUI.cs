@@ -61,7 +61,7 @@ namespace Lockstep
 
             Clock.Instance.PauseChanged += OnPauseChanged;
 
-            DebugUI.Write("netcode", $"Input delay = {Settings.InputDelayTicks} ticks\nArtificial latency = {Settings.ArtificialLatencyMs} ms\nArtifical packet loss = {100 * Settings.ArtificialPacketLossPc}%");
+            DebugUI.Write("netcode", $"Input delay = {Settings.InputDelayTicks} ticks\nArtificial latency = {Settings.ArtificialLatencyMs} ms\nArtificial packet loss = {100 * Settings.ArtificialPacketLossPc}%");
         }
 
         void OnMetadataUpdated(MetadataManager metadataManager)

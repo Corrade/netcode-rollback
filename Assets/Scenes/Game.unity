@@ -1208,7 +1208,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Input delay = 6 ticks | Artificial latency = 800ms | Artifical packet
+  m_text: 'Input delay = 6 ticks | Artificial latency = 800ms | Artificial packet
     loss = 5%
 
     Pausing due to lockstep'

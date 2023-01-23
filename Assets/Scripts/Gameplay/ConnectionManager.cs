@@ -113,7 +113,7 @@ namespace Lockstep
             completed their job by pushing the packet to the application layer.
             */
 
-            // Artifical latency
+            // Artificial latency
             if (Settings.ArtificialLatencyMs > 0)
             {
                 yield return new WaitForSecondsRealtime(Settings.ArtificialLatencyMs / 1000f);
