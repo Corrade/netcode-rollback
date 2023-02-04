@@ -68,10 +68,11 @@ namespace Lockstep
             m_KeysCurrentlyPressed = 0;
 
             // We need the tick before since simulation depends on prior ticks
-            m_NextTickToSend = TickService.Subtract(TickService.StartSimulationTick, 1);
+            m_NextTickToSend = TickService.Subtract(TickService.StartTick, 1);
 
             m_InputBuffer.Initialise(
-                startInclusive: m_NextTickToSend,
+                // Start with blank input in the buffer to enable immediate simulation
+                startInclusive: TickService.Subtract(TickService.StartTick, 5),
                 endExclusive: TickService.StartTick
             );
         }

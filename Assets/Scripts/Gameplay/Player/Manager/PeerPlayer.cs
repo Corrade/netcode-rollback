@@ -24,5 +24,17 @@ namespace Lockstep
             base.Awake();
             m_PeerInputManager = GetComponent<PeerInputManager>();
         }
+
+        public void SimulateWithExtrapolation()
+        {
+            // Extrapolate by taking the tick with the most recent input
+            ushort tick = TickService.Subtract(m_PeerInputManager.EndExclusive, 1);
+
+            // Prior ticks are needed for GetInputDown() and GetInputUp()
+            Assert.IsTrue(m_PeerInputManager.HasInput(TickService.Subtract(tick, 1)));
+            Assert.IsTrue(m_PeerInputManager.HasInput(tick));
+
+            m_MovementManager.RunMovement(tick);
+        }
     }
 }

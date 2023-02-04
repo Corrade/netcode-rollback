@@ -20,6 +20,8 @@ namespace Lockstep
     {
         public static ConnectionManager Instance { get; private set; }
 
+        public event Action SetupComplete;
+
         const float m_SetupServerRetryIntervalSec = 1f;
         const float m_ConnectClientRetryIntervalSec = 1f;
 
@@ -27,7 +29,7 @@ namespace Lockstep
         UnityClient m_SelfClient; // Connection from self client (us: reader) to peer server (writer)
         IClient m_PeerClient; // Connection from peer client (reader) to self server (us: writer)
 
-        bool m_SetupComplete = false;
+        bool m_IsSetupComplete = false;
 
         void Awake()
         {
@@ -41,16 +43,18 @@ namespace Lockstep
 
             m_SelfClient = GetComponent<UnityClient>();
             m_SelfServer = GetComponent<XmlUnityServer>();
+
+            StartCoroutine(Setup());
         }
 
         public IEnumerator Setup()
         {
-            if (m_SetupComplete)
+            if (m_IsSetupComplete)
             {
                 Debug.LogError("Setup called multiple times");
             }
 
-            m_SetupComplete = false;
+            m_IsSetupComplete = false;
 
             // Setup self server
             yield return SetupServer(Settings.SelfPort);
@@ -63,7 +67,8 @@ namespace Lockstep
 
             Debug.Log("Setup complete");
 
-            m_SetupComplete = true;
+            m_IsSetupComplete = true;
+            SetupComplete?.Invoke();
         }
 
         // This should be called as early as possible to ensure that no messages are missed

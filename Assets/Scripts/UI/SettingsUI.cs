@@ -24,9 +24,6 @@ namespace Lockstep
         TMP_InputField PeerPortTextInput;
 
         [SerializeField]
-        TMP_InputField InputDelayTicksTextInput;
-
-        [SerializeField]
         TMP_InputField ArtificialLatencyMsTextInput;
 
         [SerializeField]
@@ -39,7 +36,6 @@ namespace Lockstep
             Assert.IsTrue(SelfPortTextInput != null);
             Assert.IsTrue(PeerAddressTextInput != null);
             Assert.IsTrue(PeerPortTextInput != null);
-            Assert.IsTrue(InputDelayTicksTextInput != null);
             Assert.IsTrue(ArtificialLatencyMsTextInput != null);
             Assert.IsTrue(ArtificialPacketLossPcTextInput != null);
         }
@@ -56,7 +52,6 @@ namespace Lockstep
             SelfPortTextInput.text = Settings.SelfPort.ToString();
             PeerAddressTextInput.text = Settings.PeerAddress;
             PeerPortTextInput.text = Settings.PeerPort.ToString();
-            InputDelayTicksTextInput.text = Settings.InputDelayTicks.ToString();
             ArtificialLatencyMsTextInput.text = Settings.ArtificialLatencyMs.ToString();
             ArtificialPacketLossPcTextInput.text = Settings.ArtificialPacketLossPc.ToString();
         }
@@ -68,7 +63,6 @@ namespace Lockstep
             Settings.SelfPort = int.Parse(SelfPortTextInput.text);
             Settings.PeerAddress = PeerAddressTextInput.text;
             Settings.PeerPort = int.Parse(PeerPortTextInput.text);
-            Settings.InputDelayTicks = int.Parse(InputDelayTicksTextInput.text);
             Settings.ArtificialLatencyMs = int.Parse(ArtificialLatencyMsTextInput.text);
             Settings.ArtificialPacketLossPc = float.Parse(ArtificialPacketLossPcTextInput.text);
         }

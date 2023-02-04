@@ -14,7 +14,7 @@ using Lockstep;
 
 namespace Lockstep
 {
-    [RequireComponent(typeof(MetadataManager), typeof(MovementManager), typeof(InputManager)), RequireComponent(typeof(CollisionManager))]
+    [RequireComponent(typeof(MetadataManager), typeof(MovementManager), typeof(InputManager)), RequireComponent(typeof(SpriteRenderer))]
     public abstract class Player : MonoBehaviour
     {
         public int Id => MetadataManager.Id;
@@ -37,18 +37,13 @@ namespace Lockstep
 
         protected abstract InputManager m_InputManager { get; }
         protected MovementManager m_MovementManager;
-        protected CollisionManager m_CollisionManager;
+        protected SpriteRenderer m_SpriteRenderer;
 
         protected virtual void Awake()
         {
             MetadataManager = GetComponent<MetadataManager>();
             m_MovementManager = GetComponent<MovementManager>();
-            m_CollisionManager = GetComponent<CollisionManager>();
-
-            foreach (PlayerReference playerReference in GetComponentsInChildren<PlayerReference>(includeInactive: true))
-            {
-                playerReference.Initialise(this);
-            }
+            m_SpriteRenderer = GetComponent<SpriteRenderer>();
         }
 
         public void Initialise(int id, string name)
@@ -74,6 +69,11 @@ namespace Lockstep
             return m_InputManager.HasInput(tick);
         }
 
+        public void SetSpriteVisible(bool visible)
+        {
+            m_SpriteRenderer.enabled = visible;
+        }
+
         public void Simulate(ushort tick)
         {
             // Prior ticks are needed for GetInputDown() and GetInputUp()
@@ -81,6 +81,16 @@ namespace Lockstep
             Assert.IsTrue(m_InputManager.HasInput(tick));
 
             m_MovementManager.RunMovement(tick);
+        }
+
+        public void SaveRollbackState()
+        {
+            m_MovementManager.SaveRollbackState();
+        }
+
+        public void Rollback()
+        {
+            m_MovementManager.Rollback();
         }
 
         public void Teleport(Vector2 position, bool faceLeft)

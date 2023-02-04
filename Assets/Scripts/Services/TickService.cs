@@ -14,8 +14,6 @@ namespace Lockstep
         static readonly ushort LargeTickThreshold = (ushort)(MaxTick-SecondsToTicks(100));
         static readonly ushort SmallTickThreshold = SecondsToTicks(100);
 
-        public static ushort StartSimulationTick => TickService.Subtract(TickService.StartTick, Settings.InputDelayTicks);
-
         public static ushort Add(ushort tick, int x)
         {
             return (ushort)MathExtensions.Mod((int)tick + x, MaxTick);
@@ -43,11 +41,7 @@ namespace Lockstep
 
         public static bool IsBeforeOrEqual(ushort tick1, ushort tick2)
         {
-            return IsLarge(tick1) && IsSmall(tick2)
-                ? true
-                : IsSmall(tick1) && IsLarge(tick2)
-                    ? false
-                    : tick1 <= tick2;
+            return IsBefore(tick1, tick2) || (tick1 == tick2);
         }
 
         public static bool IsAfter(ushort tick1, ushort tick2)

@@ -18,6 +18,9 @@ namespace Lockstep
         SpawnManager SpawnManager;
 
         [SerializeField]
+        RollbackManager RollbackManager;
+    
+        [SerializeField]
         public SelfPlayer SelfPlayer;
 
         [SerializeField]
@@ -34,6 +37,8 @@ namespace Lockstep
 
         void Awake()
         {
+            Assert.IsTrue(SpawnManager != null);
+            Assert.IsTrue(RollbackManager != null);
             Assert.IsTrue(SelfPlayer != null);
             Assert.IsTrue(PeerPlayer != null);
 
@@ -44,22 +49,23 @@ namespace Lockstep
 
         void Start()
         {
+            /*
+            // Debug singleplayer
+            SelfPlayer.LifeLost += OnLifeLost;
+            PeerPlayer.LifeLost += OnLifeLost;
+            SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: "self");
+            PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: "peer");
+            StartMatch();
+            return;
+            */
+
+            ConnectionManager.Instance.SetupComplete += OnConnectionSetupComplete;
             ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
 
             SelfPlayer.LifeLost += OnLifeLost;
             PeerPlayer.LifeLost += OnLifeLost;
 
-            /*
-            // Debug singleplayer
-            {
-                SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: "self");
-                PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: "peer");
-                StartMatch();
-                return;
-            }
-            */
-
-            StartCoroutine(PreGame());
+            SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: Settings.SelfPlayerName);
         }
 
         void OnDestroy()
@@ -67,29 +73,18 @@ namespace Lockstep
             Clock.Instance.TickUpdated -= GameLoop;
         }
 
-        IEnumerator PreGame()
+        void OnConnectionSetupComplete()
         {
-            SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: Settings.SelfPlayerName);
-
-            // Setup all connections
-            yield return ConnectionManager.Instance.Setup();
-
-            // Send client player metadata to peer and wait for theirs
-            yield return PlayerMetadataSync();
-
-            StartMatch();
+            StartCoroutine(PreGame());
         }
 
-        IEnumerator PlayerMetadataSync()
+        IEnumerator PreGame()
         {
             SendPlayerMetadata();
 
             yield return new WaitUntil(() => m_PeerPlayerMetadataReceived);
-        }
 
-        void SendPlayerMetadata()
-        {
-            ConnectionManager.Instance.SendMessage(() => PlayerMetadataMsg.CreateMessage(Settings.SelfPlayerName), SendMode.Reliable);
+            StartMatch();
         }
 
         void StartMatch()
@@ -107,6 +102,8 @@ namespace Lockstep
 
         void ResetForMatch()
         {
+            RollbackManager.ResetForMatch();
+
             SelfPlayer.ResetForMatch();
             PeerPlayer.ResetForMatch();
 
@@ -134,27 +131,64 @@ namespace Lockstep
         }
 
         void GameLoop(ushort currentTick)
-        { 
-            ushort simulationTick = TickService.Subtract(currentTick, Settings.InputDelayTicks);
-
-            SelfPlayer.SendUnackedInputs(untilTickExclusive: currentTick);
-
-            if (!PeerPlayer.HasInput(simulationTick))
-            {
-                Clock.Instance.PauseIncrementing();
-                return;
-            }
-
-            Clock.Instance.ResumeIncrementing();
+        {
+            SetSpritesVisible(visible: false);
 
             SelfPlayer.WriteInput(currentTick);
+            SelfPlayer.SendUnackedInputs(untilTickExclusive: TickService.Add(currentTick, 1));
 
-            SelfPlayer.Simulate(simulationTick);
-            PeerPlayer.Simulate(simulationTick);
+            // Rollback to the gamestate and tick saved by the latest call
+            // to SaveRollbackState()
+            ushort t = RollbackManager.Rollback();
+            Assert.IsTrue(TickService.IsBeforeOrEqual(t, currentTick));
 
-            SelfPlayer.DisposeInputs(tickJustSimulated: simulationTick);
-            PeerPlayer.DisposeInputs(tickJustSimulated: simulationTick);
+            ushort rolledbackto = t;
 
+            // Simulate while both players' inputs are present, starting from
+            // and including t
+            for (; PeerPlayer.HasInput(t) && TickService.IsBeforeOrEqual(t, currentTick); t = TickService.Add(t, 1))
+            {
+                SelfPlayer.Simulate(t);
+                PeerPlayer.Simulate(t);
+                RunSimulation(isPredicting: false);
+            }
+
+            DebugUI.Write("rollback", $"Rolled back to tick={rolledbackto}, simulated up to (exclusive) tick={t}, currentTick={currentTick}");
+
+            // t <= currentTick+1
+            Assert.IsTrue(TickService.IsBeforeOrEqual(t, TickService.Add(currentTick, 1)));
+
+            // t is the next tick that needs to be simulated
+            RollbackManager.SaveRollbackState(t);
+
+            DebugUI.ShowGhost("selfghost", SelfPlayer.gameObject.transform.position);
+            DebugUI.ShowGhost("peerghost", PeerPlayer.gameObject.transform.position);
+
+            Assert.IsTrue(!PeerPlayer.HasInput(t) || TickService.IsAfter(t, currentTick));
+
+            // Finish the simulation if needed by performing prediction and
+            // extrapolation
+            for (; TickService.IsBeforeOrEqual(t, currentTick); t = TickService.Add(t, 1))
+            {
+                Assert.IsTrue(!PeerPlayer.HasInput(t));
+
+                SelfPlayer.Simulate(t);
+                PeerPlayer.SimulateWithExtrapolation();
+                RunSimulation(isPredicting: true);
+            }
+
+            SetSpritesVisible(visible: true);
+        }
+
+        void SetSpritesVisible(bool visible)
+        {
+            SelfPlayer.SetSpriteVisible(visible);
+            PeerPlayer.SetSpriteVisible(visible);
+        }
+
+        void RunSimulation(bool isPredicting)
+        {
+            SelfPlayer.IsPredicting = isPredicting;
             Physics2D.Simulate(TickService.TimeBetweenTicksSec);
         }
 
@@ -216,6 +250,11 @@ namespace Lockstep
                 PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: msg.Name);
                 m_PeerPlayerMetadataReceived = true;
             }
+        }
+
+        void SendPlayerMetadata()
+        {
+            ConnectionManager.Instance.SendMessage(() => PlayerMetadataMsg.CreateMessage(Settings.SelfPlayerName), SendMode.Reliable);
         }
     }
 }

@@ -18,8 +18,6 @@ namespace Lockstep
 
         public static int PeerPort = 9001;
 
-        public static int InputDelayTicks = 6;
-
         public static int ArtificialLatencyMs = 25;
 
         public static float ArtificialPacketLossPc = 0.05f;

@@ -19,11 +19,12 @@ namespace Lockstep
             ConnectionManager.Instance.RemoveOnMessageReceived(OnMessageReceived);
             ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
 
-            ushort tickBeforeStartSimulationTick = TickService.Subtract(TickService.StartSimulationTick, 1);
+            ushort tickBeforeStartTick = TickService.Subtract(TickService.StartTick, 1);
 
             m_InputBuffer.Initialise(
-                startInclusive: tickBeforeStartSimulationTick,
-                endExclusive: tickBeforeStartSimulationTick
+                // Start with blank input in the buffer to enable immediate extrapolation
+                startInclusive: TickService.Subtract(TickService.StartTick, 5),
+                endExclusive: tickBeforeStartTick
             );
         }
 

@@ -16,10 +16,16 @@ namespace Lockstep
 {
     public abstract class InputManager : MonoBehaviour
     {
+        public ushort StartInclusive => m_InputBuffer.StartInclusive;
+        public ushort EndExclusive => m_InputBuffer.EndExclusive;
+
         protected InputBuffer m_InputBuffer = new InputBuffer();
 
         public virtual void Initialise() {}
 
+        // Recall that to simulate tick N, we need both tick N and its
+        // predecessor. Therefore after completing all operations for tick N,
+        // in setting up for tick N+1, we still require tick N.
         public virtual void DisposeInputs(ushort tickJustSimulated)
         {
             m_InputBuffer.StartInclusive = tickJustSimulated;

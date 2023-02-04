@@ -14,17 +14,25 @@ using Lockstep;
 
 namespace Lockstep
 {
-    [RequireComponent(typeof(SelfInputManager))]
+    [RequireComponent(typeof(SelfInputManager), typeof(SelfPredictionManager))]
     public class SelfPlayer : Player
     {
+        public bool IsPredicting
+        {
+            get { return m_SelfPredictionManager.IsPredicting; }
+            set { m_SelfPredictionManager.IsPredicting = value; }
+        }
+
         protected override InputManager m_InputManager { get { return m_SelfInputManager; } }
 
         SelfInputManager m_SelfInputManager;
+        SelfPredictionManager m_SelfPredictionManager;
 
         protected override void Awake()
         {
             base.Awake();
             m_SelfInputManager = GetComponent<SelfInputManager>();
+            m_SelfPredictionManager = GetComponent<SelfPredictionManager>();
         }
 
         public void WriteInput(ushort currentTick)
