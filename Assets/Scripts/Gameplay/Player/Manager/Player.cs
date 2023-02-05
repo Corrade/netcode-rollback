@@ -20,6 +20,7 @@ namespace Lockstep
         public int Id => MetadataManager.Id;
         public int Lives => MetadataManager.Lives;
         public bool IsDefeated => MetadataManager.IsDefeated;
+        public Vector2 Position => gameObject.transform.position;
 
         public event Action<MetadataManager> MetadataUpdated
         {
@@ -80,7 +81,7 @@ namespace Lockstep
             Assert.IsTrue(m_InputManager.HasInput(TickService.Subtract(tick, 1)));
             Assert.IsTrue(m_InputManager.HasInput(tick));
 
-            m_MovementManager.RunMovement(tick);
+            m_MovementManager.Simulate(tick);
         }
 
         public void SaveRollbackState()

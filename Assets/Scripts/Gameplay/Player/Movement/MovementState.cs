@@ -16,7 +16,6 @@ namespace Lockstep
 {
     public struct MovementState
     {
-        public Vector2 Position;
         public Vector2 RigidbodyPosition;
 
         public Vector2 CandidateVelocity;
@@ -53,7 +52,6 @@ namespace Lockstep
 
         public void Reset()
         {
-            Position = Vector2.zero;
             RigidbodyPosition = Vector2.zero;
 
             CandidateVelocity = Vector2.zero;
@@ -70,7 +68,6 @@ namespace Lockstep
         // listeners are preserved and 2) the events themselves are triggered
         public void Assign(MovementState other)
         {
-            Position = other.Position;
             RigidbodyPosition = other.RigidbodyPosition;
 
             CandidateVelocity = other.CandidateVelocity;
@@ -81,6 +78,30 @@ namespace Lockstep
 
             IsFacingLeft = other.IsFacingLeft;
             IsKicking = other.IsKicking;
+        }
+
+        public bool Equals(MovementState other)
+        {
+            return RigidbodyPosition == other.RigidbodyPosition
+                && CandidateVelocity == other.CandidateVelocity
+                && CandidatePosition == other.CandidatePosition
+                && IsGrounded == other.IsGrounded
+                && GroundNormal == other.GroundNormal
+                && GroundCollider == other.GroundCollider
+                && IsFacingLeft == other.IsFacingLeft
+                && IsKicking == other.IsKicking;
+        }
+
+        public override string ToString()
+        {
+            return $"RigidbodyPosition={RigidbodyPosition}\n"
+                + $"CandidateVelocity={CandidateVelocity}\n"
+                + $"CandidatePosition={CandidatePosition}\n"
+                + $"IsGrounded={IsGrounded}\n"
+                + $"GroundNormal={GroundNormal}\n"
+                + $"GroundCollider={GroundCollider}\n"
+                + $"IsFacingLeft={IsFacingLeft}\n"
+                + $"IsKicking={IsKicking}";
         }
     }
 }

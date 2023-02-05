@@ -64,7 +64,8 @@ namespace Lockstep
             PauseChanged?.Invoke();
         }
 
-        // Resumes at the tick after the tick that was paused at
+        // If the clock is currently paused, then it will resume at the
+        // next tick
         public void ResumeIncrementing()
         {
             if (!Paused)

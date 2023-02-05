@@ -117,7 +117,7 @@ Each player is accessed through a manager inherited from [Player.cs](./Assets/Sc
 [MovementManager.cs](./Assets/Scripts/Gameplay/Player/MovementManager.cs)
 
 ```C#
-public void RunMovement(ushort tick)
+public void Simulate(ushort tick)
 {
     float deltaTime = TickService.TimeBetweenTicksSec;
 

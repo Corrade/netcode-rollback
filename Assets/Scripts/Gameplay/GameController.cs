@@ -35,6 +35,10 @@ namespace Lockstep
         bool m_PeerPlayerMetadataReceived = false;
         const float m_IntermissionDurationSec = 0.8f;
 
+        #if DEVELOPMENT_BUILD || UNITY_EDITOR
+        int[] m_DebugSimulatedWithoutPrediction = new int[TickService.MaxTick];
+        #endif
+
         void Awake()
         {
             Assert.IsTrue(SpawnManager != null);
@@ -49,15 +53,16 @@ namespace Lockstep
 
         void Start()
         {
-            /*
             // Debug singleplayer
-            SelfPlayer.LifeLost += OnLifeLost;
-            PeerPlayer.LifeLost += OnLifeLost;
-            SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: "self");
-            PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: "peer");
-            StartMatch();
-            return;
-            */
+            if (false)
+            {
+                SelfPlayer.LifeLost += OnLifeLost;
+                PeerPlayer.LifeLost += OnLifeLost;
+                SelfPlayer.Initialise(id: Settings.SelfPlayerId, name: "self");
+                PeerPlayer.Initialise(id: 1 - SelfPlayer.Id, name: "peer");
+                StartMatch();
+                return;
+            }
 
             ConnectionManager.Instance.SetupComplete += OnConnectionSetupComplete;
             ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
@@ -120,6 +125,12 @@ namespace Lockstep
             SpawnManager.TeleportToSpawn(SelfPlayer);
             SpawnManager.TeleportToSpawn(PeerPlayer);
 
+            RollbackManager.SaveRollbackState(
+                Clock.Instance.Paused
+                    ? TickService.Add(Clock.Instance.CurrentTick, 1)
+                    : Clock.Instance.CurrentTick
+            );
+
             Clock.Instance.TickUpdated += GameLoop;
             Clock.Instance.ResumeIncrementing();
         }
@@ -140,9 +151,9 @@ namespace Lockstep
             // Rollback to the gamestate and tick saved by the latest call
             // to SaveRollbackState()
             ushort t = RollbackManager.Rollback();
-            Assert.IsTrue(TickService.IsBeforeOrEqual(t, currentTick));
 
-            ushort rolledbackto = t;
+            // t <= currentTick
+            Assert.IsTrue(TickService.IsBeforeOrEqual(t, currentTick));
 
             // Simulate while both players' inputs are present, starting from
             // and including t
@@ -150,20 +161,21 @@ namespace Lockstep
             {
                 SelfPlayer.Simulate(t);
                 PeerPlayer.Simulate(t);
-                RunSimulation(isPredicting: false);
+                RunSimulation(isPredicting: false, tick: t);
             }
 
-            DebugUI.Write("rollback", $"Rolled back to tick={rolledbackto}, simulated up to (exclusive) tick={t}, currentTick={currentTick}");
+            AssertSimulatedWithoutPredictionExactlyOnceUpTo(tickExclusive: t);
+
+            DebugUI.ShowGhost("selfghost", SelfPlayer.Position);
+            DebugUI.ShowGhost("peerghost", PeerPlayer.Position);
 
             // t <= currentTick+1
             Assert.IsTrue(TickService.IsBeforeOrEqual(t, TickService.Add(currentTick, 1)));
 
-            // t is the next tick that needs to be simulated
+            // By now, t represents the next tick that needs to be simulated
             RollbackManager.SaveRollbackState(t);
 
-            DebugUI.ShowGhost("selfghost", SelfPlayer.gameObject.transform.position);
-            DebugUI.ShowGhost("peerghost", PeerPlayer.gameObject.transform.position);
-
+            // From the guard of the previous loop
             Assert.IsTrue(!PeerPlayer.HasInput(t) || TickService.IsAfter(t, currentTick));
 
             // Finish the simulation if needed by performing prediction and
@@ -174,7 +186,7 @@ namespace Lockstep
 
                 SelfPlayer.Simulate(t);
                 PeerPlayer.SimulateWithExtrapolation();
-                RunSimulation(isPredicting: true);
+                RunSimulation(isPredicting: true, tick: t);
             }
 
             SetSpritesVisible(visible: true);
@@ -186,10 +198,17 @@ namespace Lockstep
             PeerPlayer.SetSpriteVisible(visible);
         }
 
-        void RunSimulation(bool isPredicting)
+        void RunSimulation(bool isPredicting, ushort tick)
         {
             SelfPlayer.IsPredicting = isPredicting;
-            Physics2D.Simulate(TickService.TimeBetweenTicksSec);
+            SimulationManager.Instance.Simulate(tick);
+
+            #if DEVELOPMENT_BUILD || UNITY_EDITOR
+            if (!isPredicting)
+            {
+                m_DebugSimulatedWithoutPrediction[tick]++;
+            }
+            #endif
         }
 
         void OnLifeLost(MetadataManager metadataManager)
@@ -229,6 +248,21 @@ namespace Lockstep
             }
 
             m_IsInIntermission = false;
+        }
+
+        // Assert that all ticks up to tickExclusive have been simulated
+        // without prediction exactly once.
+        // For the sake of simplicity and since this is only for debugging,
+        // we assume that tickExclusive is after or equal to t (by TickService
+        // standards).
+        void AssertSimulatedWithoutPredictionExactlyOnceUpTo(ushort tickExclusive)
+        {
+            #if DEVELOPMENT_BUILD || UNITY_EDITOR
+            for (ushort t = 0; TickService.IsBefore(t, tickExclusive); t = TickService.Add(t, 1))
+            {
+                Assert.IsTrue(m_DebugSimulatedWithoutPrediction[t] == 1);
+            }
+            #endif
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)

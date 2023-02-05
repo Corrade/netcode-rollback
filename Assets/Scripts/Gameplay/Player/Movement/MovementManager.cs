@@ -64,6 +64,11 @@ namespace Lockstep
         MovementState m_State;
         MovementState m_RollbackState;
 
+        #if DEVELOPMENT_BUILD || UNITY_EDITOR
+        MovementState[] m_DebugStateHistory = new MovementState[TickService.MaxTick];
+        bool[] m_DebugStateSimulated = new bool[TickService.MaxTick];
+        #endif
+
         void Awake()
         {
             m_InputManager = GetComponent<InputManager>();
@@ -75,10 +80,26 @@ namespace Lockstep
 
             m_State.IsFacingLeftChanged += OnIsFacingLeftChanged;
             m_State.IsKickingChanged += OnIsKickingChanged;
+
+            SimulationManager.Instance.Simulated += OnSimulated;
         }
 
-        public void RunMovement(ushort tick)
+        void OnDestroy()
         {
+            SimulationManager.Instance.Simulated -= OnSimulated;
+        }
+
+        public void Reset()
+        {
+            m_State.Reset();
+            m_RollbackState.Reset();
+        }
+
+        // Doesn't execute until the next simulation step
+        public void Simulate(ushort tick)
+        {
+            // (*) Invariant: m_RB2D.position == m_State.RigidbodyPosition
+
             float deltaTime = TickService.TimeBetweenTicksSec;
 
             m_State.CandidatePosition = m_RB2D.position;
@@ -92,16 +113,32 @@ namespace Lockstep
 
             if (m_State.CandidatePosition != m_RB2D.position)
             {
+                // Assigns to m_RB2D.position *in the next simulation*
                 m_RB2D.MovePosition(m_State.CandidatePosition);
+
+                // It's tempting to believe that we just falsified the
+                // invariant (*) by "assigning" to m_RB2D.position.
+                // However, this assignment hasn't actually unfolded yet since
+                // we've yet to run a simulation step.
+                // The invariant is still true and will only become false
+                // after simulation. So, we'll defer doing anything until
+                // then (in OnSimulated()).
             }
 
             UpdateIsFacingLeft();
         }
 
-        public void Reset()
+        public void SaveRollbackState()
         {
-            m_State.Reset();
-            m_RollbackState.Reset();
+            m_RollbackState.Assign(m_State);
+        }
+
+        public void Rollback()
+        {
+            m_State.Assign(m_RollbackState);
+
+            // Preserve invariant (*)
+            m_RB2D.position = m_State.RigidbodyPosition;
         }
 
         // Nullifies velocity
@@ -110,26 +147,20 @@ namespace Lockstep
             m_State.CandidateVelocity = Vector2.zero;
             m_State.IsFacingLeft = faceLeft;
 
-            // Perform the teleport instantaneously (don't wait for the next physics step)
-            transform.position = position;
+            // Preserve invariant (*)
+            m_State.RigidbodyPosition = position;
+            m_RB2D.position = position;
         }
 
-        public void SaveRollbackState()
+        void OnSimulated(ushort tickJustSimulated)
         {
-            m_State.Position = transform.position;
+            // The simulation has just applied any changes from Simulate()
+            // to m_RB2D.position
+
+            // Preserve invariant (*)
             m_State.RigidbodyPosition = m_RB2D.position;
 
-            m_RollbackState.Assign(m_State);
-        }
-
-        public void Rollback()
-        {
-            m_State.Assign(m_RollbackState);
-
-            transform.position = m_State.Position;
-            m_RB2D.position = m_State.RigidbodyPosition;
-
-            DebugUI.Write("rollbackstate", $"Rollback state:\n    Position={m_State.Position}\n    CandidateVelocity={m_State.CandidateVelocity}\n    CandidatePosition={m_State.CandidatePosition}");
+            AssertSimulatedStateEqualsPrior(tickJustSimulated);
         }
 
         // Check whether or not the player is grounded and set the related variables appropriately
@@ -357,6 +388,25 @@ namespace Lockstep
         void OnIsKickingChanged()
         {
             KickCollider.SetActive(m_State.IsKicking);
+        }
+
+        // If the given tick has been simulated before, then assert that the
+        // current state is equal to the state of that prior simulation.
+        // For the sake of simplicity and since this is only for debugging,
+        // we assume that ticks do not wrap around.
+        void AssertSimulatedStateEqualsPrior(ushort tick)
+        {
+            #if DEVELOPMENT_BUILD || UNITY_EDITOR
+            if (m_DebugStateSimulated[tick])
+            {
+                Assert.IsTrue(m_State.Equals(m_DebugStateHistory[tick]));
+            }
+            else
+            {
+                m_DebugStateSimulated[tick] = true;
+                m_DebugStateHistory[tick].Assign(m_State);
+            }
+            #endif
         }
 
         // Returns whether or not direction is moving into the surface with the given normal. Assumes both parameters are normalized.

@@ -34,7 +34,7 @@ namespace Lockstep
             Assert.IsTrue(m_PeerInputManager.HasInput(TickService.Subtract(tick, 1)));
             Assert.IsTrue(m_PeerInputManager.HasInput(tick));
 
-            m_MovementManager.RunMovement(tick);
+            m_MovementManager.Simulate(tick);
         }
     }
 }
