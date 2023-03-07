@@ -23,12 +23,26 @@ namespace Lockstep
 
         public virtual void Initialise() {}
 
+        public virtual void ResetForRound(ushort startTick)
+        {
+            m_InputBuffer.Initialise(
+                // Start with blank input in the buffer to enable immediate simulation
+                startInclusive: TickService.Subtract(startTick, 5),
+                endExclusive: startTick
+            );
+
+            for (ushort t = m_InputBuffer.StartInclusive; TickService.IsBefore(t, m_InputBuffer.EndExclusive); t = TickService.Add(t, 1))
+            {
+                m_InputBuffer.WriteInput(t, 0);
+            }
+        }
+
         // Recall that to simulate tick N, we need both tick N and its
         // predecessor. Therefore after completing all operations for tick N,
-        // in setting up for tick N+1, we still require tick N.
-        public virtual void DisposeInputs(ushort tickJustSimulated)
+        // we still require tick N for tick N+1.
+        public virtual void DisposeInputs(ushort untilTickExclusive)
         {
-            m_InputBuffer.StartInclusive = tickJustSimulated;
+            m_InputBuffer.StartInclusive = TickService.Min(untilTickExclusive, m_InputBuffer.EndExclusive);
         }
 
         public bool HasInput(ushort tick)

@@ -48,14 +48,30 @@ namespace Lockstep
     public class KickHitbox : MonoBehaviour
     {
         public MetadataManager MetadataManager;
+        public MovementManager MovementManager;
+        public SimulationStateManager SimulationStateManager;
 
         protected virtual void Awake()
         {
             Assert.IsTrue(MetadataManager != null);
+            Assert.IsTrue(MovementManager != null);
+            Assert.IsTrue(SimulationStateManager != null);
         }
 
         protected virtual void OnTriggerEnter2D(Collider2D other)
         {
+            DebugUI.WriteSequenced(
+                $"{MetadataManager.Id} OnTriggerEnter2D()",
+                $"id={MetadataManager.Id} OnTriggerEnter2D() this.name={gameObject.name} other.name={other.gameObject.name}"
+            );
+
+            // Do not compute collisions if the simulation is unofficial, i.e.
+            // during prediction or extrapolation
+            if (!SimulationStateManager.IsSimulatingOfficially)
+            {
+                return;
+            }
+
             MetadataManager otherMetadataManager = other.GetComponent<MetadataManager>();
 
             // Other collider isn't a player
@@ -71,6 +87,9 @@ namespace Lockstep
             }
 
             otherMetadataManager.LoseLife();
+
+            // Prevent one kick from triggering multiple times
+            MovementManager.StopKicking();
         }
     }
 }

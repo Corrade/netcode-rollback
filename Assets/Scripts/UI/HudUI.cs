@@ -60,10 +60,6 @@ namespace Lockstep
 
             GameController.RoundStarted += OnRoundStarted;
             GameController.MatchEnded += OnMatchEnded;
-
-            Clock.Instance.PauseChanged += OnPauseChanged;
-
-            OnPauseChanged();
         }
 
         void OnMetadataUpdated(MetadataManager metadataManager)
@@ -108,11 +104,6 @@ namespace Lockstep
             {
                 MatchEndDialogue.text = "Victory!";
             }
-        }
-
-        void OnPauseChanged()
-        {
-            DebugUI.Write("pause", Clock.Instance.Paused ? "Paused" : "Running");
         }
     }
 }

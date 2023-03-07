@@ -90,8 +90,8 @@ void GameLoop(ushort currentTick)
     SelfPlayer.Simulate(simulationTick);
     PeerPlayer.Simulate(simulationTick);
 
-    SelfPlayer.DisposeInputs(tickJustSimulated: simulationTick);
-    PeerPlayer.DisposeInputs(tickJustSimulated: simulationTick);
+    SelfPlayer.DisposeInputs(untilTickExclusive: simulationTick);
+    PeerPlayer.DisposeInputs(untilTickExclusive: simulationTick);
 
     Physics2D.Simulate(TickService.TimeBetweenTicksSec);
 }

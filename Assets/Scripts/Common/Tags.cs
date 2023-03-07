@@ -9,7 +9,9 @@ namespace Lockstep
         public const ushort PlayerMetadata = 0;
         public const ushort Input = 1;
         public const ushort InputAck = 2;
+        public const ushort Ping = 3;
+        public const ushort PingAck = 4;
 
-        public const ushort Count = 3;
+        public const ushort Count = 5;
     }
 }

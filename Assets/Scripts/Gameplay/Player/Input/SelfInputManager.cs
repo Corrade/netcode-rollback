@@ -67,14 +67,13 @@ namespace Lockstep
             m_KeysJustPressed = 0;
             m_KeysCurrentlyPressed = 0;
 
-            // We need the tick before since simulation depends on prior ticks
-            m_NextTickToSend = TickService.Subtract(TickService.StartTick, 1);
+            ResetForRound(TickService.StartTick);
+        }
 
-            m_InputBuffer.Initialise(
-                // Start with blank input in the buffer to enable immediate simulation
-                startInclusive: TickService.Subtract(TickService.StartTick, 5),
-                endExclusive: TickService.StartTick
-            );
+        public override void ResetForRound(ushort startTick)
+        {
+            base.ResetForRound(startTick);
+            m_NextTickToSend = startTick;
         }
 
         void Update()
@@ -95,9 +94,9 @@ namespace Lockstep
             }
         }
 
-        public override void DisposeInputs(ushort tickJustSimulated)
+        public override void DisposeInputs(ushort untilTickExclusive)
         {
-            m_InputBuffer.StartInclusive = TickService.Min(tickJustSimulated, m_NextTickToSend);
+            m_InputBuffer.StartInclusive = TickService.Min(TickService.Min(untilTickExclusive, m_NextTickToSend), m_InputBuffer.EndExclusive);
         }
 
         public void WriteInput(ushort currentTick)

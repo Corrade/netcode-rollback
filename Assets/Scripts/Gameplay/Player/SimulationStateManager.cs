@@ -12,8 +12,8 @@ using Lockstep;
 
 namespace Lockstep
 {
-    public class SelfPredictionManager : MonoBehaviour
+    public class SimulationStateManager : MonoBehaviour
     {
-        public bool IsPredicting;
+        public bool IsSimulatingOfficially;
     }
 }

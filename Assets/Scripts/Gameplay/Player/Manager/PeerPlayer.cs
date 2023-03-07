@@ -31,8 +31,8 @@ namespace Lockstep
             ushort tick = TickService.Subtract(m_PeerInputManager.EndExclusive, 1);
 
             // Prior ticks are needed for GetInputDown() and GetInputUp()
-            Assert.IsTrue(m_PeerInputManager.HasInput(TickService.Subtract(tick, 1)));
-            Assert.IsTrue(m_PeerInputManager.HasInput(tick));
+            Assert.IsTrue(m_InputManager.HasInput(tick));
+            Assert.IsTrue(m_InputManager.HasInput(TickService.Subtract(tick, 1)));
 
             m_MovementManager.Simulate(tick);
         }

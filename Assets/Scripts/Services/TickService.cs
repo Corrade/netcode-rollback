@@ -11,8 +11,8 @@ namespace Lockstep
         public const ushort StartTick = 0;
         public const ushort MaxTick = 65530; // A bit less than the actual maximum of a ushort so that incrementing won't overflow
 
-        static readonly ushort LargeTickThreshold = (ushort)(MaxTick-SecondsToTicks(100));
-        static readonly ushort SmallTickThreshold = SecondsToTicks(100);
+        static readonly ushort LargeTickThreshold = (ushort)(MaxTick-SecondsToTicks(100f));
+        static readonly ushort SmallTickThreshold = SecondsToTicks(100f);
 
         public static ushort Add(ushort tick, int x)
         {
@@ -64,9 +64,15 @@ namespace Lockstep
             return IsAfter(tick1, tick2) ? tick1 : tick2;
         }
 
-        public static ushort SecondsToTicks(ushort seconds)
+        // Seconds must be positive
+        public static ushort SecondsToTicks(float seconds)
         {
-            int res = Tickrate * seconds;
+            if (seconds < 0)
+            {
+                Debug.LogError("Negative seconds given to SecondsToTicks()");
+            }
+
+            float res = Tickrate * seconds;
             if (res > MaxTick)
             {
                 Debug.LogError("Overflow in SecondsToTicks()");

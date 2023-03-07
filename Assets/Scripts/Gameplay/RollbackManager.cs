@@ -17,7 +17,7 @@ namespace Lockstep
         [SerializeField]
         GameController GameController;
 
-        ushort m_TickOfSavedState;
+        public ushort SavedTick { get; private set; }
 
         void Awake()
         {
@@ -26,13 +26,13 @@ namespace Lockstep
 
         public void ResetForMatch()
         {
-            m_TickOfSavedState = TickService.Subtract(TickService.StartTick, 1);
+            SavedTick = TickService.Subtract(TickService.StartTick, 1);
         }
 
         // Save the current gamestate for future rollback
         public void SaveRollbackState(ushort tick)
         {
-            m_TickOfSavedState = tick;
+            SavedTick = tick;
 
             GameController.SelfPlayer.SaveRollbackState();
             GameController.PeerPlayer.SaveRollbackState();
@@ -44,13 +44,13 @@ namespace Lockstep
         {
             // We rollback to states in an increasing order, so we can
             // safely dispose of inputs for ticks prior to this state
-            GameController.SelfPlayer.DisposeInputs(tickJustSimulated: TickService.Subtract(m_TickOfSavedState, 5));
-            GameController.PeerPlayer.DisposeInputs(tickJustSimulated: TickService.Subtract(m_TickOfSavedState, 5));
+            GameController.SelfPlayer.DisposeInputs(untilTickExclusive: TickService.Subtract(SavedTick, 5));
+            GameController.PeerPlayer.DisposeInputs(untilTickExclusive: TickService.Subtract(SavedTick, 5));
 
             GameController.SelfPlayer.Rollback();
             GameController.PeerPlayer.Rollback();
 
-            return m_TickOfSavedState;
+            return SavedTick;
         }
     }
 }

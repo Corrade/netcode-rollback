@@ -14,7 +14,7 @@ using Lockstep;
 
 namespace Lockstep
 {
-    [RequireComponent(typeof(InputManager), typeof(BoxCollider2D), typeof(Rigidbody2D))]
+    [RequireComponent(typeof(InputManager), typeof(BoxCollider2D), typeof(Rigidbody2D)), RequireComponent(typeof(MetadataManager))]
     public class MovementManager : MonoBehaviour
     {
         [Tooltip("Objects in these layers will be considered as obstacles")]
@@ -55,11 +55,15 @@ namespace Lockstep
         [SerializeField]
         GameObject KickCollider;
 
+        public Vector2 Position => m_RB2D.position;
+        public Vector2 KickColliderPosition => KickCollider.transform.position;
+
         Vector3 m_KickVector;
 
         InputManager m_InputManager;
         BoxCollider2D m_CollisionCollider;
         Rigidbody2D m_RB2D;
+        MetadataManager m_MetadataManager;
 
         MovementState m_State;
         MovementState m_RollbackState;
@@ -74,6 +78,7 @@ namespace Lockstep
             m_InputManager = GetComponent<InputManager>();
             m_CollisionCollider = GetComponent<BoxCollider2D>();
             m_RB2D = GetComponent<Rigidbody2D>();
+            m_MetadataManager = GetComponent<MetadataManager>();
 
             Assert.IsTrue(KickCollider != null);
             m_KickVector = (Quaternion.AngleAxis(KickAngle, Vector3.forward) * Vector3.left).normalized;
@@ -104,6 +109,11 @@ namespace Lockstep
 
             m_State.CandidatePosition = m_RB2D.position;
 
+            DebugUI.WriteSequenced(
+                $"{m_MetadataManager.Id} Simulate() start",
+                $"id={m_MetadataManager.Id} Simulate() start m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+            );
+
             GroundCheck();
             ProposeVelocity(tick, deltaTime);
             AdjustVelocityForObstructions();
@@ -122,23 +132,110 @@ namespace Lockstep
                 // we've yet to run a simulation step.
                 // The invariant is still true and will only become false
                 // after simulation. So, we'll defer doing anything until
-                // then (in OnSimulated()).
+                // then (see OnSimulated()).
             }
+
+            DebugUI.WriteSequenced(
+                $"{m_MetadataManager.Id} Simulate() end",
+                $"id={m_MetadataManager.Id} Simulate() end m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+            );
 
             UpdateIsFacingLeft();
         }
 
         public void SaveRollbackState()
         {
+            DebugUI.WriteSequenced(
+                $"{m_MetadataManager.Id} SaveRollbackState()",
+                $"id={m_MetadataManager.Id} SaveRollbackState() m_State.RigidbodyPosition={m_State.RigidbodyPosition}"
+            );
+
             m_RollbackState.Assign(m_State);
         }
 
         public void Rollback()
         {
+            DebugUI.WriteSequenced(
+                $"{m_MetadataManager.Id} Rollback() start",
+                $"id={m_MetadataManager.Id} Rollback() start transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
+            );
+
             m_State.Assign(m_RollbackState);
+
+            /*
+            WHY WE NEED TO REFRESH THE KICK COLLIDER
+
+            A single collision will trigger its related events exactly once.
+            Furthermore, a colliding object will be unable to trigger
+            more collisions for a short period of time, i.e. there is a
+            cooldown between collisions (?).
+
+            https://docs.unity3d.com/ScriptReference/MonoBehaviour.OnTriggerEnter2D.html
+
+            This cooldown in particular can cause bugs when combined with
+            rollback. For example:
+
+            1. t=1 Official simulation
+            2. t=2 Unofficial simulation: two objects collide with each other
+            3. Rollback to t=1
+            4. t=2 Official simulation: the objects should collide, but the
+            collision isn't registered because it recently occurred in the
+            unofficial simulation and is therefore on cooldown.
+
+            To fix this, we "refresh" the kick collider during every rollback
+            by turning it off and on again (if it's supposed to be on).
+            */
+
+            KickCollider.SetActive(false);
+            SyncKickColliderWithState();
 
             // Preserve invariant (*)
             m_RB2D.position = m_State.RigidbodyPosition;
+
+            /*
+            WHY TELEPORTING (MODIFYING TRANSFORM.POSITION DIRECTLY) IS
+            ESSENTIAL, AND HOW TO IMPLEMENT IT CORRECTLY
+
+            Consider the following situation where we rollback by setting
+            rigidbody position, which is resolved using interpolation, instead
+            of actually teleporting:
+
+            1. Save rollback at a normal simulation state
+            2. Unofficial simulation: suppose we detect a collision at tick t,
+            but we block it because we're in an unofficial simulation (*)
+            3. Next game loop
+            4. Rollback to the normal simulation state (**) using rigidbody
+            position
+            5. Official simulation: we interpolate to the rollback state (**)
+            from the current state (*) because moving via rigidbody position
+            is performed using interpolation
+            6. Collision detected!
+            => Collision in the official simulation is caused when we interpolate
+            from a blocked collision in the previous tick's unofficial state.
+
+            To fix this, we should evaluate the rollback by cleanly teleporting
+            without interpolation.
+
+            But we still want interpolation for regular movement for
+            performance and to prevent colliders from potentially
+            skipping over each other.
+
+            So, in this overall project, we set positions via both the
+            transform and the rigidbody. To ensure this is safe, after every
+            direct transform adjustment, we call Physics2D.SyncTransforms().
+            Not calling this results in strange behaviour where running the
+            simulation doesn't do anything.
+            */
+
+            transform.position = m_State.RigidbodyPosition;
+            Physics2D.SyncTransforms();
+            
+            Assert.IsTrue(m_RB2D.position == m_State.RigidbodyPosition);
+
+            DebugUI.WriteSequenced(
+                $"{m_MetadataManager.Id} Rollback() end",
+                $"id={m_MetadataManager.Id} Rollback() end transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
+            );
         }
 
         // Nullifies velocity
@@ -152,7 +249,12 @@ namespace Lockstep
             m_RB2D.position = position;
         }
 
-        void OnSimulated(ushort tickJustSimulated)
+        public void StopKicking()
+        {
+            m_State.IsKicking = false;
+        }
+
+        void OnSimulated(ushort untilTickExclusive)
         {
             // The simulation has just applied any changes from Simulate()
             // to m_RB2D.position
@@ -160,7 +262,12 @@ namespace Lockstep
             // Preserve invariant (*)
             m_State.RigidbodyPosition = m_RB2D.position;
 
-            AssertSimulatedStateEqualsPrior(tickJustSimulated);
+            DebugUI.WriteSequenced(
+                $"{m_MetadataManager.Id} OnSimulated()",
+                $"id={m_MetadataManager.Id} OnSimulated() m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+            );
+
+            // AssertSimulatedStateEqualsPrior(untilTickExclusive);
         }
 
         // Check whether or not the player is grounded and set the related variables appropriately
@@ -207,7 +314,7 @@ namespace Lockstep
                 m_State.GroundCollider = hit.collider;
                 m_State.CandidatePosition = hit.centroid;
 
-                m_State.IsKicking = false;
+                StopKicking();
 
                 // Prevent scaling steep walls with jump resets
                 if (!IsTooSteep(hit.normal))
@@ -387,6 +494,16 @@ namespace Lockstep
 
         void OnIsKickingChanged()
         {
+            DebugUI.WriteSequenced(
+                $"{m_MetadataManager.Id} OnIsKickingChanged()",
+                $"id={m_MetadataManager.Id} OnIsKickingChanged() active={m_State.IsKicking}"
+            );
+
+            SyncKickColliderWithState();
+        }
+
+        void SyncKickColliderWithState()
+        {
             KickCollider.SetActive(m_State.IsKicking);
         }
 
@@ -394,6 +511,10 @@ namespace Lockstep
         // current state is equal to the state of that prior simulation.
         // For the sake of simplicity and since this is only for debugging,
         // we assume that ticks do not wrap around.
+        // NOTE: This is only useful for singleplayer tests. This assertion
+        // obviously fails for real simulations done under prediction (enemy
+        // input might invalidate the prediction) and often fails for peer
+        // extrapolation.
         void AssertSimulatedStateEqualsPrior(ushort tick)
         {
             #if DEVELOPMENT_BUILD || UNITY_EDITOR

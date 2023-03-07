@@ -60,8 +60,9 @@ namespace Lockstep
 
         public void Initialise(ushort startInclusive, ushort endExclusive)
         {
-            StartInclusive = startInclusive;
+            // Set end before start to maintain assertions
             EndExclusive = endExclusive;
+            StartInclusive = startInclusive;
         }
 
         public bool HasInput(ushort tick)

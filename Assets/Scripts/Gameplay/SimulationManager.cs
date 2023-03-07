@@ -21,6 +21,10 @@ namespace Lockstep
 
         public event Action<ushort> Simulated;
 
+        public ushort LatestSimulationTick { get; private set; }
+        public ushort LatestOfficialSimulationTick { get; private set; }
+        public ushort LatestUnofficialSimulationTick { get; private set; }
+
         void Awake()
         {
             if (Instance != null && Instance != this)
@@ -32,9 +36,21 @@ namespace Lockstep
             Instance = this;
         }
 
-        public void Simulate(ushort tick)
+        public void Simulate(bool isSimulatingOfficially, ushort tick)
         {
+            LatestSimulationTick = tick;
+
+            if (isSimulatingOfficially)
+            {
+                LatestOfficialSimulationTick = tick;
+            }
+            else
+            {
+                LatestUnofficialSimulationTick = tick;
+            }
+
             Physics2D.Simulate(TickService.TimeBetweenTicksSec);
+
             Simulated?.Invoke(tick);
         }
     }

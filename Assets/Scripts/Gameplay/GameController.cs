@@ -31,12 +31,16 @@ namespace Lockstep
         public event Action RoundStarted;
         public event Action RoundEnded;
 
-        bool m_IsInIntermission = false;
+        bool m_IsFirstRound;
+        bool m_IsInIntermission;
+        ushort m_IntermissionStartTick;
+        ushort m_IntermissionFinishTick;
         bool m_PeerPlayerMetadataReceived = false;
         const float m_IntermissionDurationSec = 0.8f;
 
         #if DEVELOPMENT_BUILD || UNITY_EDITOR
-        int[] m_DebugSimulatedWithoutPrediction = new int[TickService.MaxTick];
+        ushort m_DebugRoundStartTick;
+        int[] m_DebugTimesSimulatedOfficially = new int[TickService.MaxTick];
         #endif
 
         void Awake()
@@ -107,42 +111,61 @@ namespace Lockstep
 
         void ResetForMatch()
         {
-            RollbackManager.ResetForMatch();
+            m_IsFirstRound = true;
+            m_IsInIntermission = false;
+            m_IntermissionStartTick = 0;
+            m_IntermissionFinishTick = 0;
 
-            SelfPlayer.ResetForMatch();
-            PeerPlayer.ResetForMatch();
+            RollbackManager.ResetForMatch();
 
             ResetForRound();
 
+            Clock.Instance.TickUpdated += GameLoop;
             Clock.Instance.Begin();
         }
 
         void ResetForRound()
         {
-            SelfPlayer.ResetForRound();
-            PeerPlayer.ResetForRound();
+            DebugUI.WriteSequenced("ResetForRound()", $"ResetForRound() Clock.Instance.CurrentTick={Clock.Instance.CurrentTick}");
+
+            // This value must be the same for all players because it determines
+            // the point at which the teleports are applied
+            ushort roundStartTick = m_IsFirstRound
+                ? TickService.StartTick
+                : m_IntermissionFinishTick;
+
+            if (!m_IsFirstRound)
+            {
+                SelfPlayer.ResetForNonFirstRound(roundStartTick);
+                PeerPlayer.ResetForNonFirstRound(roundStartTick);
+            }
 
             SpawnManager.TeleportToSpawn(SelfPlayer);
             SpawnManager.TeleportToSpawn(PeerPlayer);
 
-            RollbackManager.SaveRollbackState(
-                Clock.Instance.Paused
-                    ? TickService.Add(Clock.Instance.CurrentTick, 1)
-                    : Clock.Instance.CurrentTick
-            );
+            RollbackManager.SaveRollbackState(roundStartTick);
 
-            Clock.Instance.TickUpdated += GameLoop;
-            Clock.Instance.ResumeIncrementing();
+            #if DEVELOPMENT_BUILD || UNITY_EDITOR
+            m_DebugRoundStartTick = roundStartTick;
+            #endif
         }
 
         void StopRound()
         {
-            Clock.Instance.PauseIncrementing();
-            Clock.Instance.TickUpdated -= GameLoop;
+            m_IsFirstRound = false;
         }
 
         void GameLoop(ushort currentTick)
         {
+            DebugUI.WriteSequenced("GameLoop() start", $"GameLoop() start currentTick={currentTick}");
+
+            if (m_IsInIntermission)
+            {
+                // Ensure the peer has enough input to get to intermission
+                SelfPlayer.SendUnackedInputs(untilTickExclusive: TickService.Add(m_IntermissionStartTick, 1));
+                return;
+            }
+
             SetSpritesVisible(visible: false);
 
             SelfPlayer.WriteInput(currentTick);
@@ -152,8 +175,12 @@ namespace Lockstep
             // to SaveRollbackState()
             ushort t = RollbackManager.Rollback();
 
+            DebugUI.WriteSequenced("Rolled back", $"Rolled back tick={t}");
+
             // t <= currentTick
             Assert.IsTrue(TickService.IsBeforeOrEqual(t, currentTick));
+
+            DebugUI.WriteSequenced("Official simulation start", $"Official simulation start t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             // Simulate while both players' inputs are present, starting from
             // and including t
@@ -161,13 +188,17 @@ namespace Lockstep
             {
                 SelfPlayer.Simulate(t);
                 PeerPlayer.Simulate(t);
-                RunSimulation(isPredicting: false, tick: t);
+                RunSimulation(isSimulatingOfficially: true, tick: t);
             }
 
-            AssertSimulatedWithoutPredictionExactlyOnceUpTo(tickExclusive: t);
+            DebugUI.WriteSequenced("Official simulation end", $"Official simulation end t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
-            DebugUI.ShowGhost("selfghost", SelfPlayer.Position);
-            DebugUI.ShowGhost("peerghost", PeerPlayer.Position);
+            AssertSimulatedOfficiallyExactlyOnceUpTo(tickExclusive: t);
+
+            DebugUI.ShowGhost("Self ghost", SelfPlayer.Position);
+            DebugUI.ShowGhost("Self kick collider", SelfPlayer.KickColliderPosition);
+            DebugUI.ShowGhost("Peer ghost", PeerPlayer.Position);
+            DebugUI.ShowGhost("Peer kick collider", PeerPlayer.KickColliderPosition);
 
             // t <= currentTick+1
             Assert.IsTrue(TickService.IsBeforeOrEqual(t, TickService.Add(currentTick, 1)));
@@ -178,6 +209,8 @@ namespace Lockstep
             // From the guard of the previous loop
             Assert.IsTrue(!PeerPlayer.HasInput(t) || TickService.IsAfter(t, currentTick));
 
+            DebugUI.WriteSequenced("Unofficial simulation start", $"Unofficial simulation start t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+
             // Finish the simulation if needed by performing prediction and
             // extrapolation
             for (; TickService.IsBeforeOrEqual(t, currentTick); t = TickService.Add(t, 1))
@@ -186,8 +219,10 @@ namespace Lockstep
 
                 SelfPlayer.Simulate(t);
                 PeerPlayer.SimulateWithExtrapolation();
-                RunSimulation(isPredicting: true, tick: t);
+                RunSimulation(isSimulatingOfficially: false, tick: t);
             }
+
+            DebugUI.WriteSequenced("Unofficial simulation end", $"Unofficial simulation end t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             SetSpritesVisible(visible: true);
         }
@@ -198,21 +233,25 @@ namespace Lockstep
             PeerPlayer.SetSpriteVisible(visible);
         }
 
-        void RunSimulation(bool isPredicting, ushort tick)
+        void RunSimulation(bool isSimulatingOfficially, ushort tick)
         {
-            SelfPlayer.IsPredicting = isPredicting;
-            SimulationManager.Instance.Simulate(tick);
+            SelfPlayer.IsSimulatingOfficially = isSimulatingOfficially;
+            PeerPlayer.IsSimulatingOfficially = isSimulatingOfficially;
+
+            SimulationManager.Instance.Simulate(isSimulatingOfficially, tick);
 
             #if DEVELOPMENT_BUILD || UNITY_EDITOR
-            if (!isPredicting)
+            if (isSimulatingOfficially)
             {
-                m_DebugSimulatedWithoutPrediction[tick]++;
+                m_DebugTimesSimulatedOfficially[tick]++;
             }
             #endif
         }
 
         void OnLifeLost(MetadataManager metadataManager)
         {
+            DebugUI.WriteSequenced("OnLifeLost()", $"OnLifeLost()");
+
             StartCoroutine(Intermission(matchIsOver: (metadataManager.IsDefeated)));
         }
 
@@ -225,6 +264,16 @@ namespace Lockstep
 
             m_IsInIntermission = true;
 
+            // Intermission can only be triggered from an official simulation
+            Assert.IsTrue(SimulationManager.Instance.LatestOfficialSimulationTick == SimulationManager.Instance.LatestSimulationTick);
+
+            m_IntermissionStartTick = SimulationManager.Instance.LatestOfficialSimulationTick;
+            m_IntermissionFinishTick = TickService.Add(m_IntermissionStartTick, TickService.SecondsToTicks(m_IntermissionDurationSec));
+
+            // what if there's major packet loss and by the time the player reaches here, they've already written input for m_IntermissionFinishTick
+
+            DebugUI.WriteSequenced("Intermission()", $"Intermission() m_IntermissionStartTick={m_IntermissionStartTick}, m_IntermissionFinishTick={m_IntermissionFinishTick}");
+
             StopRound();
 
             if (matchIsOver)
@@ -236,7 +285,7 @@ namespace Lockstep
                 RoundEnded?.Invoke();
             }
 
-            yield return new WaitForSecondsRealtime(m_IntermissionDurationSec);
+            yield return new WaitUntil(() => TickService.IsAfterOrEqual(Clock.Instance.CurrentTick, m_IntermissionFinishTick));
 
             if (matchIsOver)
             {
@@ -250,17 +299,18 @@ namespace Lockstep
             m_IsInIntermission = false;
         }
 
-        // Assert that all ticks up to tickExclusive have been simulated
-        // without prediction exactly once.
+        // Assert that all ticks [m_DebugRoundStartTick, tickExclusive) have
+        // been simulated under confirmation exactly once.
         // For the sake of simplicity and since this is only for debugging,
         // we assume that tickExclusive is after or equal to t (by TickService
         // standards).
-        void AssertSimulatedWithoutPredictionExactlyOnceUpTo(ushort tickExclusive)
+        void AssertSimulatedOfficiallyExactlyOnceUpTo(ushort tickExclusive)
         {
             #if DEVELOPMENT_BUILD || UNITY_EDITOR
-            for (ushort t = 0; TickService.IsBefore(t, tickExclusive); t = TickService.Add(t, 1))
+            for (ushort t = m_DebugRoundStartTick; TickService.IsBefore(t, tickExclusive); t = TickService.Add(t, 1))
             {
-                Assert.IsTrue(m_DebugSimulatedWithoutPrediction[t] == 1);
+                Assert.IsTrue(m_DebugTimesSimulatedOfficially[t] > 0);
+                Assert.IsTrue(m_DebugTimesSimulatedOfficially[t] < 2);
             }
             #endif
         }
