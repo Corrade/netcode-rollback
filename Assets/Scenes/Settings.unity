@@ -1112,7 +1112,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3580009123824796540, guid: 3fd80ec2ded85e841a74e89d4a0f4940, type: 3}
       propertyPath: m_text
-      value: Player ID
+      value: Player ID (0 or 1)
       objectReference: {fileID: 0}
     - target: {fileID: 3580009124272257132, guid: 3fd80ec2ded85e841a74e89d4a0f4940, type: 3}
       propertyPath: m_Pivot.x

@@ -25,11 +25,12 @@ namespace Lockstep
             ;
 
             // every now and then get ping
-            // every now and then get tick of peer. use ping + this old value to estimate the peer's realtime tick
+            // every now and then get tick of peer
+            // estimate the peer's realtime tick using their last sent tick + ping
             // if our tick is slower, then speed up the clock
             // if our tick is faster, do nothing. the peer should speed up their clock by mirroring this procedure
 
-            //TimeService.GetElapsedTime()
+            // TimeService.GetElapsedTime()
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)

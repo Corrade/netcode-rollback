@@ -270,8 +270,6 @@ namespace Lockstep
             m_IntermissionStartTick = SimulationManager.Instance.LatestOfficialSimulationTick;
             m_IntermissionFinishTick = TickService.Add(m_IntermissionStartTick, TickService.SecondsToTicks(m_IntermissionDurationSec));
 
-            // what if there's major packet loss and by the time the player reaches here, they've already written input for m_IntermissionFinishTick
-
             DebugUI.WriteSequenced("Intermission()", $"Intermission() m_IntermissionStartTick={m_IntermissionStartTick}, m_IntermissionFinishTick={m_IntermissionFinishTick}");
 
             StopRound();
