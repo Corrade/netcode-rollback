@@ -1,0 +1,23 @@
+fileFormatVersion: 2
+guid: a6f19e3151ba480684aa93936a4266d6
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - CMU Serif
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: dff6e3089d7940dc93452eadc66d51e5, type: 3}
+  - {fileID: 12800000, guid: 3b588b71d4cd428cb39adeeb61160201, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
