@@ -6,7 +6,7 @@ using UnityEngine.Assertions;
 
 using DarkRift;
 
-namespace Lockstep
+namespace Rollback
 {
     public class InputAckMsg : IDarkRiftSerializable
     {

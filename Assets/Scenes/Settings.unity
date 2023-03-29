@@ -341,7 +341,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 794109570}
-        m_TargetAssemblyTypeName: Lockstep.SettingsUI, Assembly-CSharp
+        m_TargetAssemblyTypeName: Rollback.SettingsUI, Assembly-CSharp
         m_MethodName: OnPlayPressed
         m_Mode: 1
         m_Arguments:

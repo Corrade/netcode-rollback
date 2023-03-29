@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     public class InputBuffer
     {

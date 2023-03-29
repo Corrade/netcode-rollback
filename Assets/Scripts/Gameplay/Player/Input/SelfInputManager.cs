@@ -10,7 +10,7 @@ using DarkRift.Client.Unity;
 using DarkRift.Server;
 using DarkRift.Server.Unity;
 
-using Lockstep;
+using Rollback;
 
 /*
 
@@ -46,7 +46,7 @@ key, we set its bit in m_KeysJustPressed. The clear this bit array after every
 tick.
 */
 
-namespace Lockstep
+namespace Rollback
 {
     public class SelfInputManager : InputManager
     {

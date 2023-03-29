@@ -4,7 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 
-namespace Lockstep
+namespace Rollback
 {
     public class SettingsUI : MonoBehaviour
     {

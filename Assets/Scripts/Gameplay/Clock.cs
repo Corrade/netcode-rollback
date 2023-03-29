@@ -8,9 +8,9 @@ using DarkRift;
 using DarkRift.Server;
 using DarkRift.Server.Unity;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     public class Clock : MonoBehaviour
     {

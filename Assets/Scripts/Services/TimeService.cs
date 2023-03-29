@@ -1,8 +1,8 @@
 using System.Diagnostics;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     public static class TimeService
     {

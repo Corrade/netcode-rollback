@@ -8,9 +8,9 @@ using DarkRift;
 using DarkRift.Client;
 using DarkRift.Client.Unity;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     public class RollbackManager : MonoBehaviour
     {

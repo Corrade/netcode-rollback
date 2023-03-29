@@ -1,4 +1,4 @@
-# P2P Deterministic Lockstep
+# P2P Deterministic Rollback
 
 ![Demo GIF](./ReadmeAssets/lockstep.gif)
 
@@ -11,7 +11,7 @@ Based on [Divekick](https://store.steampowered.com/app/244730/Divekick/), a mini
 This project is a technical exercise and isn't production-ready.
 
 
-## Lockstep theory
+## Rollback theory
 
 ### Advantages, disadvantages and applications
 
@@ -21,13 +21,13 @@ This project is a technical exercise and isn't production-ready.
 - [-] Stuttering in turbulent network conditions makes for a terrible experience
 - [-] Deterministic input required
 
-Lockstep is used in some RTS games and older fighting games. For the most part, its lack of responsiveness makes it undesirable.
+Rollback is used in some RTS games and older fighting games. For the most part, its lack of responsiveness makes it undesirable.
 
 However, its principles pave a good foundation for further augmentations.
 
-### Lockstep
+### Rollback
 
-Lockstep is perhaps the most simplistic viable networking model.
+Rollback is perhaps the most simplistic viable networking model.
 
 In essence, we play the game at a delay of D ticks. The player's input is collected and sent over the network instantly, but only rendered after D ticks.
 

@@ -5,7 +5,7 @@ using UnityEngine;
 
 using DarkRift;
 
-namespace Lockstep
+namespace Rollback
 {
     public class PlayerMetadataMsg : IDarkRiftSerializable
     {

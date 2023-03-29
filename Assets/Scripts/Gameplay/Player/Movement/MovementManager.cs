@@ -10,9 +10,9 @@ using DarkRift.Client.Unity;
 using DarkRift.Server;
 using DarkRift.Server.Unity;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     [RequireComponent(typeof(InputManager), typeof(BoxCollider2D), typeof(Rigidbody2D)), RequireComponent(typeof(MetadataManager))]
     public class MovementManager : MonoBehaviour
@@ -65,8 +65,8 @@ namespace Lockstep
         Rigidbody2D m_RB2D;
         MetadataManager m_MetadataManager;
 
-        MovementState m_State;
-        MovementState m_RollbackState;
+        MovementState m_State = new MovementState();
+        MovementState m_RollbackState = new MovementState();
 
         #if DEVELOPMENT_BUILD || UNITY_EDITOR
         MovementState[] m_DebugStateHistory = new MovementState[TickService.MaxTick];
@@ -397,7 +397,7 @@ namespace Lockstep
             
             if (!m_State.IsFacingLeft)
             {
-                m_State.CandidateVelocity.x *= -1;
+                m_State.CandidateVelocity = new Vector2(-m_State.CandidateVelocity.x, m_State.CandidateVelocity.y);
             };
         }
 
@@ -471,14 +471,19 @@ namespace Lockstep
 
         void UpdateIsFacingLeft()
         {
+            // Preserve the existing facing direction if there's been no
+            // change in velocity
+            if (m_State.CandidateVelocity.x == 0)
+            {
+                return;
+            }
+
             m_State.IsFacingLeft = (m_State.CandidateVelocity.x < 0);
         }
 
         void OnIsFacingLeftChanged()
         {
-            // Preserve the existing facing direction if there's been no
-            // change in velocity
-            if (m_State.CandidateVelocity.sqrMagnitude == 0)
+            if (m_State.CandidateVelocity.x == 0)
             {
                 return;
             }

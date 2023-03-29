@@ -10,19 +10,36 @@ using DarkRift.Client.Unity;
 using DarkRift.Server;
 using DarkRift.Server.Unity;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
-    public struct MovementState
+    public class MovementState
     {
         public Vector2 RigidbodyPosition;
-
-        public Vector2 CandidateVelocity;
         public Vector2 CandidatePosition;
-        public bool IsGrounded;
         public Vector2 GroundNormal;
         public Collider2D GroundCollider;
+
+        public Vector2 CandidateVelocity
+        {
+            get { return m_CandidateVelocity; }
+            set
+            {
+                m_CandidateVelocity = value;
+                CandidateVelocityChanged?.Invoke();
+            }
+        }
+
+        public bool IsGrounded
+        {
+            get { return m_IsGrounded; }
+            set
+            {
+                m_IsGrounded = value;
+                IsGroundedChanged?.Invoke();
+            }
+        }
 
         public bool IsFacingLeft
         {
@@ -44,22 +61,24 @@ namespace Lockstep
             }
         }
 
+        public event Action CandidateVelocityChanged;
+        public event Action IsGroundedChanged;
         public event Action IsFacingLeftChanged;
         public event Action IsKickingChanged;
 
+        Vector2 m_CandidateVelocity;
+        bool m_IsGrounded;
         bool m_IsFacingLeft;
         bool m_IsKicking;
 
         public void Reset()
         {
             RigidbodyPosition = Vector2.zero;
-
             CandidateVelocity = Vector2.zero;
             CandidatePosition = Vector2.zero;
             IsGrounded = false;
             GroundNormal = Vector2.zero;
             GroundCollider = null;
-
             IsFacingLeft = false;
             IsKicking = false;
         }
@@ -69,13 +88,11 @@ namespace Lockstep
         public void Assign(MovementState other)
         {
             RigidbodyPosition = other.RigidbodyPosition;
-
             CandidateVelocity = other.CandidateVelocity;
             CandidatePosition = other.CandidatePosition;
             IsGrounded = other.IsGrounded;
             GroundNormal = other.GroundNormal;
             GroundCollider = other.GroundCollider;
-
             IsFacingLeft = other.IsFacingLeft;
             IsKicking = other.IsKicking;
         }

@@ -10,9 +10,9 @@ using DarkRift.Client.Unity;
 using DarkRift.Server;
 using DarkRift.Server.Unity;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     [RequireComponent(typeof(SelfInputManager))]
     public class SelfPlayer : Player

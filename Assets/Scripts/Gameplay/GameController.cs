@@ -8,9 +8,9 @@ using DarkRift;
 using DarkRift.Client;
 using DarkRift.Client.Unity;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     public class GameController : MonoBehaviour
     {
@@ -58,7 +58,7 @@ namespace Lockstep
         void Start()
         {
             // Debug singleplayer
-            if (false)
+            if (DebugFlags.IsDebuggingSingleplayer)
             {
                 SelfPlayer.LifeLost += OnLifeLost;
                 PeerPlayer.LifeLost += OnLifeLost;
@@ -79,7 +79,7 @@ namespace Lockstep
 
         void OnDestroy()
         {
-            Clock.Instance.TickUpdated -= GameLoop;
+            Clock.Instance.TickUpdated -= DebugFlags.IsDebuggingSingleplayer ? DebugSingleplayerGameLoop : GameLoop;
         }
 
         void OnConnectionSetupComplete()
@@ -120,7 +120,7 @@ namespace Lockstep
 
             ResetForRound();
 
-            Clock.Instance.TickUpdated += GameLoop;
+            Clock.Instance.TickUpdated += DebugFlags.IsDebuggingSingleplayer ? DebugSingleplayerGameLoop : GameLoop;
             Clock.Instance.Begin();
         }
 
@@ -223,6 +223,17 @@ namespace Lockstep
             }
 
             DebugUI.WriteSequenced("Unofficial simulation end", $"Unofficial simulation end t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+
+            SetSpritesVisible(visible: true);
+        }
+
+        void DebugSingleplayerGameLoop(ushort currentTick)
+        {
+            SetSpritesVisible(visible: false);
+
+            SelfPlayer.WriteInput(currentTick);
+            SelfPlayer.Simulate(currentTick);
+            RunSimulation(isSimulatingOfficially: true, tick: currentTick);
 
             SetSpritesVisible(visible: true);
         }

@@ -8,7 +8,7 @@ using DarkRift;
 using DarkRift.Client;
 using DarkRift.Client.Unity;
 
-using Lockstep;
+using Rollback;
 
 /*
 COLLIDER NOTES
@@ -43,7 +43,7 @@ This is expressed from the attacker's perspective, so naturally that's the
 correct perspective to take here.
 */
 
-namespace Lockstep
+namespace Rollback
 {
     public class KickHitbox : MonoBehaviour
     {

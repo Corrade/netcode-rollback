@@ -10,11 +10,11 @@ using DarkRift.Client.Unity;
 using DarkRift.Server;
 using DarkRift.Server.Unity;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
-    [RequireComponent(typeof(MetadataManager), typeof(MovementManager), typeof(InputManager)), RequireComponent(typeof(SpriteRenderer), typeof(SimulationStateManager))]
+    [RequireComponent(typeof(MetadataManager), typeof(MovementManager), typeof(InputManager)), RequireComponent(typeof(SpriteRenderer), typeof(SimulationStateManager), typeof(AnimationManager))]
     public abstract class Player : MonoBehaviour
     {
         public int Id => MetadataManager.Id;
@@ -47,6 +47,7 @@ namespace Lockstep
         protected MovementManager m_MovementManager;
         protected SpriteRenderer m_SpriteRenderer;
         protected SimulationStateManager m_SimulationStateManager;
+        protected AnimationManager m_AnimationManager;
 
         protected virtual void Awake()
         {
@@ -54,6 +55,7 @@ namespace Lockstep
             m_MovementManager = GetComponent<MovementManager>();
             m_SpriteRenderer = GetComponent<SpriteRenderer>();
             m_SimulationStateManager = GetComponent<SimulationStateManager>();
+            m_AnimationManager = GetComponent<AnimationManager>();
         }
 
         public void Initialise(int id, string name)
@@ -96,11 +98,13 @@ namespace Lockstep
         public void SaveRollbackState()
         {
             m_MovementManager.SaveRollbackState();
+            m_AnimationManager.SaveRollbackState();
         }
 
         public void Rollback()
         {
             m_MovementManager.Rollback();
+            m_AnimationManager.Rollback();
         }
 
         public void Teleport(Vector2 position, bool faceLeft)

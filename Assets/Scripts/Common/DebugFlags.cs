@@ -4,9 +4,8 @@ using System.Collections.Generic;
 
 namespace Rollback
 {
-    public enum SceneIDs
+    static class DebugFlags
     {
-        Settings,
-        Game
+        public const bool IsDebuggingSingleplayer = true;
     }
 }

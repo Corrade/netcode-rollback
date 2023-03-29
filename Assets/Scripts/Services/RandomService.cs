@@ -2,9 +2,9 @@ using System;
 using System.Diagnostics;
 using UnityEngine.Assertions;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     public static class RandomService
     {

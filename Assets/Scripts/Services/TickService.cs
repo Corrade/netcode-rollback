@@ -1,8 +1,8 @@
 using UnityEngine;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     public static class TickService
     {

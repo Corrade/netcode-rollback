@@ -11,9 +11,9 @@ using DarkRift.Client.Unity;
 using DarkRift.Server;
 using DarkRift.Server.Unity;
 
-using Lockstep;
+using Rollback;
 
-namespace Lockstep
+namespace Rollback
 {
     [RequireComponent(typeof(UnityClient), typeof(XmlUnityServer))]
     public class ConnectionManager : MonoBehaviour
@@ -43,6 +43,11 @@ namespace Lockstep
 
             m_SelfClient = GetComponent<UnityClient>();
             m_SelfServer = GetComponent<XmlUnityServer>();
+
+            if (DebugFlags.IsDebuggingSingleplayer)
+            {
+                return;
+            }
 
             StartCoroutine(Setup());
         }
