@@ -57,7 +57,7 @@ namespace Rollback
                     m_InputBuffer.EndExclusive = msg.EndTickExclusive;
                 }
 
-                SendInputAck(msg.EndTickExclusive);
+                SendInputAck(receivedUntilTickExclusive: msg.EndTickExclusive);
             }
         }
 

@@ -14,7 +14,7 @@ namespace Rollback
             m_Stopwatch.Start();
         }
 
-        public static long GetElapsedTime()
+        public static long GetTimestampMs()
         {
             return m_Stopwatch.ElapsedMilliseconds;
         }

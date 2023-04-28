@@ -166,6 +166,7 @@ namespace Rollback
                 return;
             }
 
+            // Bandaid workaround: ideally, rendering should be decoupled from simulation
             SetSpritesVisible(visible: false);
 
             SelfPlayer.WriteInput(currentTick);

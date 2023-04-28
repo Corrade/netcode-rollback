@@ -10,6 +10,12 @@ using DarkRift.Client.Unity;
 
 using Rollback;
 
+/*
+https://answers.unity.com/questions/787508/how-do-i-determine-the-priority-in-which-animation.html
+
+Transitions are resolved in descending order of inspector vertical position.
+*/
+
 namespace Rollback
 {
     [RequireComponent(typeof(Animator), typeof(MovementManager), typeof(MetadataManager))]
@@ -27,40 +33,60 @@ namespace Rollback
             m_Animator = GetComponent<Animator>();
             m_MovementManager = GetComponent<MovementManager>();
             m_MetadataManager = GetComponent<MetadataManager>();
-        }
 
-        void Start()
-        {
-            // Observer: On movement manager change, listen => better. will need to use this approach for OnLifeLost, might as well do it for this. state doesn't always happen just after simulate() is called
+            // gameManager.RoundStarted += OnRoundStarted;
 
+            // TODO
             /*
-            m_State.IsFacingLeftChanged += OnIsFacingLeftChanged;
-            m_State.IsKickingChanged += OnIsKickingChanged;
-
-                PeerPlayer.LifeLost += OnLifeLost;
-            hit anim
-
-            jump => movement state change (candidate velocity)
-            kick => movement state change (is kicking)
-            land => movement state change (is grounded)
-            move => movement state change (candidate velocity)
-            idle
+            m_MovementManager.CandidateVelocityChanged += OnCandidateVelocityChanged;
+            m_MovementManager.IsGroundedChanged += OnIsGroundedChanged;
+            m_MovementManager.IsKickingChanged += OnIsKickingChanged;
             */
+
+            m_MetadataManager.LifeLost += OnLifeLost;
         }
 
         public void SaveRollbackState()
         {
+            /*
+            save the animation and the time remaining on it
+            */
             ;
         }
 
         public void Rollback()
         {
+            /*
+            load saved data
+            but note that the delegates below will also be called...
+            */
             ;
+        }
+
+        void OnRoundStarted()
+        {
+            // reset
+        }
+
+        void OnCandidateVelocityChanged()
+        {
+            // velocity.y => jump => movement state change (candidate velocity)
+            // velocity.x => move => movement state change (candidate velocity)
+        }
+
+        void OnIsGroundedChanged()
+        {
+            // land => movement state change (is grounded)
+        }
+
+        void OnIsKickingChanged()
+        {
+            // kick => movement state change (is kicking)
         }
 
         void OnLifeLost(MetadataManager metadataManager)
         {
-            ;
+            // => hit anim until round started
         }
     }
 }
