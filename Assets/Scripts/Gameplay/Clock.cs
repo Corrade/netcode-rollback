@@ -22,6 +22,7 @@ namespace Rollback
         public ushort CurrentTick { get; private set; }
         public bool Paused { get; private set; } = false;
 
+        float m_Speed = 1f;
         ushort m_PausedAtTick;
         bool m_JustUnpaused;
 
@@ -83,6 +84,16 @@ namespace Rollback
             StopCoroutine(m_ClockCoroutine);
         }
 
+        public void SetSpeedMultiplier(float speed)
+        {
+            m_Speed = speed;
+        }
+
+        public void ResetSpeedMultiplier()
+        {
+            m_Speed = 1f;
+        }
+
         IEnumerator NextTick()
         {
             while (true)
@@ -96,7 +107,7 @@ namespace Rollback
                 // Keep this first so that the start tick is ran
                 TickUpdated?.Invoke(CurrentTick);
 
-                yield return new WaitForSecondsRealtime(TickService.TimeBetweenTicksSec);
+                yield return new WaitForSecondsRealtime(TickService.TimeBetweenTicksSec / m_Speed);
 
                 // We implement pausing this way instead of restarting the coroutine
                 // in order to preserve the original cadence

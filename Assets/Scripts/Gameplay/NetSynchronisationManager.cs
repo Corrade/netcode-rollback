@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -15,16 +14,18 @@ namespace Rollback
 {
     public class NetSynchronisationManager : MonoBehaviour
     {
+        const int m_BehindThresholdTick = 10;
+        const float m_CatchupSpeed = 2f;
+
         const int m_MaxRTTsCount = 5;
+        LinkedList<float> m_RTTsSec = new LinkedList<float>();
+        float m_SumRTTsSec;
 
-        List<float> m_RTTs = new List<float>();
-
-        float m_LatestPingSentTimestampMs;
         ushort m_LatestPingSentTick;
+        float m_LatestPingSentTimestampSec;
 
-        // variable names are ass TODO
         ushort m_LatestPeerPingTick;
-        float m_LatestPeerPingTimestampMs;
+        float m_LatestPeerPingTimestampSec;
         
         void Start()
         {
@@ -32,28 +33,61 @@ namespace Rollback
             ConnectionManager.Instance.AddOnMessageReceived(OnMessageReceived);
         }
 
+        void Update()
+        {
+            ushort peerCurrentTick = EstimatePeerCurrentTick();
+            ushort behindByTick = TickService.IsAfter(peerCurrentTick, Clock.Instance.CurrentTick)
+                ? TickService.Subtract(peerCurrentTick, Clock.Instance.CurrentTick)
+                : (ushort)0;
+
+            //DebugUI.Write("RTT", $"RTT={EstimateRTTSec()}, peer current tick={EstimatePeerCurrentTick()}, behindByTick={behindByTick}");
+
+            if (behindByTick > m_BehindThresholdTick)
+            {
+                Clock.Instance.SetSpeedMultiplier(m_CatchupSpeed);
+            }
+
+            Clock.Instance.ResetSpeedMultiplier();
+        }
+
         void OnConnectionSetupComplete()
         {
-            // Continually circulate exactly one ping (that is, one ping originating from self - the peer will do the same)
             SendPing();
-
-            // TODO
-            // if our tick is slower, then speed up the clock
-            // if our tick is faster, do nothing (the peer should speed up their clock by mirroring this procedure)
         }
 
         ushort EstimatePeerCurrentTick()
         {
-            float latestPeerPingSentTimestampMs = m_LatestPeerPingTimestampMs - (0.5f * EstimateRTT());
-            float timeSinceLatestPeerPingSentMs = TimeService.GetTimestampMs() - latestPeerPingSentTimestampMs;
-            Assert.IsTrue(timeSinceLatestPeerPingSentMs >= 0);
-            int timeSinceLatestPeerPingSentTick = (int)(timeSinceLatestPeerPingSentMs / (float)TickService.Tickrate);
+            float latestPeerPingSentTimestampSec = m_LatestPeerPingTimestampSec - (0.5f * EstimateRTTSec());
+            float timeSinceLatestPeerPingSentSec = Time.time - latestPeerPingSentTimestampSec;
+            Assert.IsTrue(timeSinceLatestPeerPingSentSec >= 0);
+            int timeSinceLatestPeerPingSentTick = (int)(timeSinceLatestPeerPingSentSec * (float)TickService.Tickrate);
             return TickService.Add(m_LatestPeerPingTick, timeSinceLatestPeerPingSentTick);
         }
 
-        float EstimateRTT()
+        float EstimateRTTSec()
         {
-            return m_RTTs.Average();
+            /*
+            RTT IS A MULTIPLE OF FRAME DURATION
+
+            In general, although network latencies are actually continuous/
+            highly granular, packets are processed in the update loop, which
+            discretises their latencies into steps of frame duration (1/FPS)
+            length.
+            */
+
+            return m_SumRTTsSec / m_RTTsSec.Count;
+        }
+
+        void AddRTTSec(float RTTSec)
+        {
+            m_SumRTTsSec += RTTSec;
+            m_RTTsSec.AddLast(RTTSec);
+
+            if (m_RTTsSec.Count > m_MaxRTTsCount)
+            {
+                m_SumRTTsSec -= m_RTTsSec.First.Value;
+                m_RTTsSec.RemoveFirst();
+            }
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)
@@ -78,7 +112,7 @@ namespace Rollback
                 PingMsg msg = message.Deserialize<PingMsg>();
 
                 m_LatestPeerPingTick = msg.CurrentTick;
-                m_LatestPeerPingTimestampMs = TimeService.GetTimestampMs();
+                m_LatestPeerPingTimestampSec = Time.time;
 
                 SendPingAck(receivedTick: msg.CurrentTick);
             }
@@ -93,23 +127,17 @@ namespace Rollback
                 // Peer acked the latest ping
                 Assert.IsTrue(msg.ReceivedTick == m_LatestPingSentTick);
 
-                float m_RTT = TimeService.GetTimestampMs() - m_LatestPingSentTimestampMs;
+                AddRTTSec(RTTSec: Time.time - m_LatestPingSentTimestampSec);
 
-                m_RTTs.Add(m_RTT);
-                if (m_RTTs.Count() > m_MaxRTTsCount)
-                {
-                    m_RTTs.RemoveAt(0);
-                }
-
-                // Keep pinging
+                // Continually circulate the ping
                 SendPing();
             }
         }
 
         void SendPing()
         {
-            m_LatestPingSentTimestampMs = TimeService.GetTimestampMs();
             m_LatestPingSentTick = Clock.Instance.CurrentTick;
+            m_LatestPingSentTimestampSec = Time.time;
 
             ConnectionManager.Instance.SendMessage(() => PingMsg.CreateMessage(currentTick: m_LatestPingSentTick), SendMode.Reliable);
         }

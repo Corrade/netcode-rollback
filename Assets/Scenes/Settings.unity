@@ -1473,7 +1473,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3580009123824796540, guid: 9d03cf39850b4c56a50f5fde5e6e7917, type: 3}
       propertyPath: m_text
-      value: Artificial packet loss (integer %)
+      value: Artificial packet loss (%)
       objectReference: {fileID: 0}
     - target: {fileID: 3580009124272257132, guid: 9d03cf39850b4c56a50f5fde5e6e7917, type: 3}
       propertyPath: m_Pivot.x

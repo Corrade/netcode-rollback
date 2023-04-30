@@ -126,6 +126,18 @@ namespace Rollback
             // Artificial latency
             if (Settings.ArtificialLatencyMs > 0)
             {
+                /*
+                ARTIFICIAL LATENCY IS APPROXIMATE
+
+                WaitForSeconds() ticks down in the standard update loop, so
+                wait durations will essentially be rounded to the nearest frame
+                duration.
+
+                Furthermore, even on a local setup, there's some delay in
+                transmitting packets between clients.
+
+                RTT is therefore always greater than 2 * Settings.ArtificialLatencyMs.
+                */
                 yield return new WaitForSecondsRealtime(Settings.ArtificialLatencyMs / 1000f);
             }
 

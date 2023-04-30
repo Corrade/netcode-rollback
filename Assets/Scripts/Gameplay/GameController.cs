@@ -262,8 +262,6 @@ namespace Rollback
 
         void OnLifeLost(MetadataManager metadataManager)
         {
-            DebugUI.WriteSequenced("OnLifeLost()", $"OnLifeLost()");
-
             StartCoroutine(Intermission(matchIsOver: (metadataManager.IsDefeated)));
         }
 
