@@ -14,7 +14,8 @@ namespace Rollback
 {
     public class NetSynchronisationManager : MonoBehaviour
     {
-        const int m_BehindThresholdTick = 10;
+        const int m_StartCatchingUpThresholdTick = 6;
+        const int m_StopCatchingUpThresholdTick = 2;
         const float m_CatchupSpeed = 2f;
 
         const int m_MaxRTTsCount = 5;
@@ -26,6 +27,8 @@ namespace Rollback
 
         ushort m_LatestPeerPingTick;
         float m_LatestPeerPingTimestampSec;
+
+        bool m_IsCatchingUp = false;
         
         void Start()
         {
@@ -35,6 +38,11 @@ namespace Rollback
 
         void Update()
         {
+            if (DebugFlags.IsDebuggingSingleplayer)
+            {
+                return;
+            }
+
             ushort peerCurrentTick = EstimatePeerCurrentTick();
             ushort behindByTick = TickService.IsAfter(peerCurrentTick, Clock.Instance.CurrentTick)
                 ? TickService.Subtract(peerCurrentTick, Clock.Instance.CurrentTick)
@@ -42,12 +50,19 @@ namespace Rollback
 
             //DebugUI.Write("RTT", $"RTT={EstimateRTTSec()}, peer current tick={EstimatePeerCurrentTick()}, behindByTick={behindByTick}");
 
-            if (behindByTick > m_BehindThresholdTick)
+            if (m_IsCatchingUp)
             {
+                if (behindByTick <= m_StopCatchingUpThresholdTick)
+                {
+                    m_IsCatchingUp = false;
+                    Clock.Instance.ResetSpeedMultiplier();
+                }
+            }
+            else if (behindByTick >= m_StartCatchingUpThresholdTick)
+            {
+                m_IsCatchingUp = true;
                 Clock.Instance.SetSpeedMultiplier(m_CatchupSpeed);
             }
-
-            Clock.Instance.ResetSpeedMultiplier();
         }
 
         void OnConnectionSetupComplete()

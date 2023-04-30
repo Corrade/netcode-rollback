@@ -140,7 +140,7 @@ namespace Rollback
                 $"id={m_MetadataManager.Id} Simulate() end m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
             );
 
-            UpdateIsFacingLeft();
+            UpdateIsFacingLeftBasedOnVelocity();
         }
 
         public void SaveRollbackState()
@@ -391,7 +391,7 @@ namespace Rollback
         {
             m_State.IsKicking = true;
 
-            UpdateIsFacingLeft();
+            UpdateIsFacingLeftBasedOnVelocity();
 
             m_State.CandidateVelocity = KickMagnitude * m_KickVector;
             
@@ -469,11 +469,11 @@ namespace Rollback
             }
         }
 
-        void UpdateIsFacingLeft()
+        void UpdateIsFacingLeftBasedOnVelocity()
         {
             // Preserve the existing facing direction if there's been no
             // change in velocity
-            if (m_State.CandidateVelocity.x == 0)
+            if (Mathf.Approximately(m_State.CandidateVelocity.x, 0))
             {
                 return;
             }
@@ -483,11 +483,6 @@ namespace Rollback
 
         void OnIsFacingLeftChanged()
         {
-            if (m_State.CandidateVelocity.x == 0)
-            {
-                return;
-            }
-
             Vector3 newScale = transform.localScale;
 
             newScale.x = m_State.IsFacingLeft

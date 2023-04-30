@@ -482,3 +482,8 @@ void SendInputs(ushort startTick, ushort[] inputs)
     ConnectionManager.Instance.SendMessage(() => InputMsg.CreateMessage(startTick, inputs), SendMode.Unreliable);
 }
 ```
+
+
+
+challenge: ensuring full determinism between round resets. ending roudns at the same time, starting them at the same time.
+big issues with rolling back. being able to fully reset the state to the prior point... lots of fiddly engine details

@@ -74,6 +74,11 @@ namespace Rollback
         {
             base.ResetForRound(startTick);
             m_NextTickToSend = startTick;
+
+            // Ensure that keys pressed during intermission are not written
+            // on the next round's start tick. During intermission,
+            // WriteInput() doesn't run so m_KeysJustPressed accumulates state.
+            m_KeysJustPressed = 0;
         }
 
         void Update()
@@ -103,8 +108,15 @@ namespace Rollback
         {
             Assert.IsTrue(!m_InputBuffer.HasInput(currentTick));
             m_InputBuffer.WriteInput(currentTick, (ushort)(m_KeysCurrentlyPressed | m_KeysJustPressed));
-            m_KeysJustPressed = 0;
             m_InputBuffer.EndExclusive = TickService.Add(currentTick, 1);
+
+            // This function should be called every tick while the game
+            // is in play. So, by zeroing m_KeysJustPressed here, we ensure it
+            // only records the keys pressed since the most recent tick (see
+            // the comment block at the top of this class).
+            // This could be refactored by hooking this line to a post-tick
+            // event.
+            m_KeysJustPressed = 0;
         }
 
         public void SendUnackedInputs(ushort untilTickExclusive)
