@@ -110,8 +110,9 @@ namespace Rollback
             m_State.CandidatePosition = m_RB2D.position;
 
             DebugUI.WriteSequenced(
-                $"{m_MetadataManager.Id} Simulate() start",
-                $"id={m_MetadataManager.Id} Simulate() start m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+                DebugGroup.Movement,
+                $"{m_MetadataManager.Id} MovementManager.Simulate() start",
+                $"id={m_MetadataManager.Id} MovementManager.Simulate() start: m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
             );
 
             GroundCheck();
@@ -136,8 +137,9 @@ namespace Rollback
             }
 
             DebugUI.WriteSequenced(
-                $"{m_MetadataManager.Id} Simulate() end",
-                $"id={m_MetadataManager.Id} Simulate() end m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+                DebugGroup.Movement,
+                $"{m_MetadataManager.Id} MovementManager.Simulate() end",
+                $"id={m_MetadataManager.Id} MovementManager.Simulate() end: m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
             );
 
             UpdateIsFacingLeftBasedOnVelocity();
@@ -146,8 +148,9 @@ namespace Rollback
         public void SaveRollbackState()
         {
             DebugUI.WriteSequenced(
-                $"{m_MetadataManager.Id} SaveRollbackState()",
-                $"id={m_MetadataManager.Id} SaveRollbackState() m_State.RigidbodyPosition={m_State.RigidbodyPosition}"
+                DebugGroup.Movement,
+                $"{m_MetadataManager.Id} MovementManager.SaveRollbackState()",
+                $"id={m_MetadataManager.Id} MovementManager.SaveRollbackState(): m_State.RigidbodyPosition={m_State.RigidbodyPosition}"
             );
 
             m_RollbackState.Assign(m_State);
@@ -156,8 +159,9 @@ namespace Rollback
         public void Rollback()
         {
             DebugUI.WriteSequenced(
-                $"{m_MetadataManager.Id} Rollback() start",
-                $"id={m_MetadataManager.Id} Rollback() start transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
+                DebugGroup.Movement,
+                $"{m_MetadataManager.Id} MovementManager.Rollback() start",
+                $"id={m_MetadataManager.Id} MovementManager.Rollback() start: transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
             );
 
             m_State.Assign(m_RollbackState);
@@ -233,8 +237,9 @@ namespace Rollback
             Assert.IsTrue(m_RB2D.position == m_State.RigidbodyPosition);
 
             DebugUI.WriteSequenced(
-                $"{m_MetadataManager.Id} Rollback() end",
-                $"id={m_MetadataManager.Id} Rollback() end transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
+                DebugGroup.Movement,
+                $"{m_MetadataManager.Id} MovementManager.Rollback() end",
+                $"id={m_MetadataManager.Id} MovementManager.Rollback() end: transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
             );
         }
 
@@ -263,8 +268,9 @@ namespace Rollback
             m_State.RigidbodyPosition = m_RB2D.position;
 
             DebugUI.WriteSequenced(
-                $"{m_MetadataManager.Id} OnSimulated()",
-                $"id={m_MetadataManager.Id} OnSimulated() m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+                DebugGroup.Movement,
+                $"{m_MetadataManager.Id} MovementManager.OnSimulated()",
+                $"id={m_MetadataManager.Id} MovementManager.OnSimulated(): m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
             );
 
             // AssertSimulatedStateEqualsPrior(untilTickExclusive);
@@ -494,11 +500,6 @@ namespace Rollback
 
         void OnIsKickingChanged()
         {
-            DebugUI.WriteSequenced(
-                $"{m_MetadataManager.Id} OnIsKickingChanged()",
-                $"id={m_MetadataManager.Id} OnIsKickingChanged() active={m_State.IsKicking}"
-            );
-
             SyncKickColliderWithState();
         }
 

@@ -47,8 +47,13 @@ namespace Rollback
         // same channel.
         // Every frame, written strings from all channels are displayed in
         // alphabetical order of the strings.
-        public static void Write(string channel, string value)
+        public static void Write(DebugGroup debugGroup, string channel, string value)
         {
+            if (!IsDebugGroupEnabled(debugGroup))
+            {
+                return;
+            }
+
             Instance.m_DebugText[channel] = value;
             Instance.Update();
         }
@@ -56,15 +61,25 @@ namespace Rollback
         // As for Write(), but prepends a global sequence number in front of
         // the given string. Strings written this way will therefore be
         // ordered by sequence number when displayed.
-        public static void WriteSequenced(string channel, string value)
+        public static void WriteSequenced(DebugGroup debugGroup, string channel, string value)
         {
-            Write(channel, $"Seq={Instance.Sequence} {value}");
+            if (!IsDebugGroupEnabled(debugGroup))
+            {
+                return;
+            }
+
+            Write(debugGroup, channel, $"Seq={Instance.Sequence} {value}");
             Instance.Sequence++;
         }
 
         // Updates the position of the ghost in the given channel
-        public static void ShowGhost(string channel, Vector2 position)
+        public static void ShowGhost(DebugGroup debugGroup, string channel, Vector2 position)
         {
+            if (!IsDebugGroupEnabled(debugGroup))
+            {
+                return;
+            }
+
             if (Instance.m_DebugGhosts.ContainsKey(channel))
             {
                 Instance.m_DebugGhosts[channel].transform.position = position;
@@ -84,6 +99,11 @@ namespace Rollback
             {
                 Instance.m_DebugGhosts[channel].SetActive(false);
             }
+        }
+
+        static bool IsDebugGroupEnabled(DebugGroup debugGroup)
+        {
+            return (DebugFlags.EnabledDebugGroups & debugGroup) != 0;
         }
     }
 }

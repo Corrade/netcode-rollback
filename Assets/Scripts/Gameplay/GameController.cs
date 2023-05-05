@@ -126,7 +126,7 @@ namespace Rollback
 
         void ResetForRound()
         {
-            DebugUI.WriteSequenced("ResetForRound()", $"ResetForRound() Clock.Instance.CurrentTick={Clock.Instance.CurrentTick}");
+            DebugUI.WriteSequenced(DebugGroup.Core, "ResetForRound()", $"ResetForRound(): Clock.Instance.CurrentTick={Clock.Instance.CurrentTick}");
 
             // This value must be the same for all players because it determines
             // the point at which the teleports are applied
@@ -157,7 +157,7 @@ namespace Rollback
 
         void GameLoop(ushort currentTick)
         {
-            DebugUI.WriteSequenced("GameLoop() start", $"GameLoop() start currentTick={currentTick}");
+            DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() start", $"GameLoop() start: currentTick={currentTick}");
 
             if (m_IsInIntermission)
             {
@@ -176,12 +176,12 @@ namespace Rollback
             // to SaveRollbackState()
             ushort t = RollbackManager.Rollback();
 
-            DebugUI.WriteSequenced("Rolled back", $"Rolled back tick={t}");
+            DebugUI.WriteSequenced(DebugGroup.Core, "Rolled back", $"Rolled back: tick={t}");
 
             // t <= currentTick
             Assert.IsTrue(TickService.IsBeforeOrEqual(t, currentTick));
 
-            DebugUI.WriteSequenced("Official simulation start", $"Official simulation start t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+            DebugUI.WriteSequenced(DebugGroup.Core, "Official simulation start", $"Official simulation start: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             // Simulate while both players' inputs are present, starting from
             // and including t
@@ -192,14 +192,14 @@ namespace Rollback
                 RunSimulation(isSimulatingOfficially: true, tick: t);
             }
 
-            DebugUI.WriteSequenced("Official simulation end", $"Official simulation end t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+            DebugUI.WriteSequenced(DebugGroup.Core, "Official simulation end", $"Official simulation end: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             AssertSimulatedOfficiallyExactlyOnceUpTo(tickExclusive: t);
 
-            DebugUI.ShowGhost("Self ghost", SelfPlayer.Position);
-            DebugUI.ShowGhost("Self kick collider", SelfPlayer.KickColliderPosition);
-            DebugUI.ShowGhost("Peer ghost", PeerPlayer.Position);
-            DebugUI.ShowGhost("Peer kick collider", PeerPlayer.KickColliderPosition);
+            DebugUI.ShowGhost(DebugGroup.Core, "Self ghost", SelfPlayer.Position);
+            DebugUI.ShowGhost(DebugGroup.Core, "Self kick collider", SelfPlayer.KickColliderPosition);
+            DebugUI.ShowGhost(DebugGroup.Core, "Peer ghost", PeerPlayer.Position);
+            DebugUI.ShowGhost(DebugGroup.Core, "Peer kick collider", PeerPlayer.KickColliderPosition);
 
             // t <= currentTick+1
             Assert.IsTrue(TickService.IsBeforeOrEqual(t, TickService.Add(currentTick, 1)));
@@ -210,7 +210,7 @@ namespace Rollback
             // From the guard of the previous loop
             Assert.IsTrue(!PeerPlayer.HasInput(t) || TickService.IsAfter(t, currentTick));
 
-            DebugUI.WriteSequenced("Unofficial simulation start", $"Unofficial simulation start t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+            DebugUI.WriteSequenced(DebugGroup.Core, "Unofficial simulation start", $"Unofficial simulation start: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             // Finish the simulation if needed by performing prediction and
             // extrapolation
@@ -223,7 +223,7 @@ namespace Rollback
                 RunSimulation(isSimulatingOfficially: false, tick: t);
             }
 
-            DebugUI.WriteSequenced("Unofficial simulation end", $"Unofficial simulation end t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+            DebugUI.WriteSequenced(DebugGroup.Core, "Unofficial simulation end", $"Unofficial simulation end: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             SetSpritesVisible(visible: true);
         }
@@ -280,7 +280,7 @@ namespace Rollback
             m_IntermissionStartTick = SimulationManager.Instance.LatestOfficialSimulationTick;
             m_IntermissionFinishTick = TickService.Add(m_IntermissionStartTick, TickService.SecondsToTicks(m_IntermissionDurationSec));
 
-            DebugUI.WriteSequenced("Intermission()", $"Intermission() m_IntermissionStartTick={m_IntermissionStartTick}, m_IntermissionFinishTick={m_IntermissionFinishTick}");
+            DebugUI.WriteSequenced(DebugGroup.Core, "Intermission()", $"Intermission(): m_IntermissionStartTick={m_IntermissionStartTick}, m_IntermissionFinishTick={m_IntermissionFinishTick}");
 
             StopRound();
 

@@ -61,8 +61,9 @@ namespace Rollback
         protected virtual void OnTriggerEnter2D(Collider2D other)
         {
             DebugUI.WriteSequenced(
+                DebugGroup.Core,
                 $"{MetadataManager.Id} OnTriggerEnter2D()",
-                $"id={MetadataManager.Id} OnTriggerEnter2D() this.name={gameObject.name} other.name={other.gameObject.name}"
+                $"id={MetadataManager.Id} OnTriggerEnter2D(): this.name={gameObject.name} other.name={other.gameObject.name}"
             );
 
             // Do not compute collisions if the simulation is unofficial, i.e.

@@ -97,14 +97,32 @@ namespace Rollback
 
         public void SaveRollbackState()
         {
+            DebugUI.WriteSequenced(
+                DebugGroup.Core,
+                $"{Id} SaveRollbackState()",
+                $"id={Id} SaveRollbackState()"
+            );
+
             m_MovementManager.SaveRollbackState();
             m_AnimationManager.SaveRollbackState();
         }
 
         public void Rollback()
         {
+            DebugUI.WriteSequenced(
+                DebugGroup.Core,
+                $"{Id} Rollback() start",
+                $"id={Id} Rollback() start"
+            );
+
             m_MovementManager.Rollback();
             m_AnimationManager.Rollback();
+
+            DebugUI.WriteSequenced(
+                DebugGroup.Core,
+                $"{Id} Rollback() end",
+                $"id={Id} Rollback() end"
+            );
         }
 
         public void Teleport(Vector2 position, bool faceLeft)

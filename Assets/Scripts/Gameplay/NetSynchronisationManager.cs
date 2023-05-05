@@ -48,26 +48,24 @@ namespace Rollback
                 ? TickService.Subtract(peerCurrentTick, Clock.Instance.CurrentTick)
                 : (ushort)0;
 
-            //DebugUI.Write("RTT", $"RTT={EstimateRTTSec()}, peer current tick={EstimatePeerCurrentTick()}, behindByTick={behindByTick}");
+            DebugUI.Write(
+                DebugGroup.Networking,
+                "RTT",
+                $"RTT={EstimateRTTSec()}, peer current tick={peerCurrentTick}, behindByTick={behindByTick}"
+            );
 
             if (m_IsCatchingUp)
             {
-                if (behindByTick <= m_StopCatchingUpThresholdTick)
+                if (HasCaughtUp(behindByTick))
                 {
-                    m_IsCatchingUp = false;
-                    Clock.Instance.ResetSpeedMultiplier();
+                    StopCatchingUp();
                 }
             }
-            else if (behindByTick >= m_StartCatchingUpThresholdTick)
+            // Not catching up and:
+            else if (NeedsToCatchUp(behindByTick))
             {
-                m_IsCatchingUp = true;
-                Clock.Instance.SetSpeedMultiplier(m_CatchupSpeed);
+                StartCatchingUp();
             }
-        }
-
-        void OnConnectionSetupComplete()
-        {
-            SendPing();
         }
 
         ushort EstimatePeerCurrentTick()
@@ -93,16 +91,31 @@ namespace Rollback
             return m_SumRTTsSec / m_RTTsSec.Count;
         }
 
-        void AddRTTSec(float RTTSec)
+        bool NeedsToCatchUp(ushort behindByTick)
         {
-            m_SumRTTsSec += RTTSec;
-            m_RTTsSec.AddLast(RTTSec);
+            return behindByTick >= m_StartCatchingUpThresholdTick;
+        }
 
-            if (m_RTTsSec.Count > m_MaxRTTsCount)
-            {
-                m_SumRTTsSec -= m_RTTsSec.First.Value;
-                m_RTTsSec.RemoveFirst();
-            }
+        bool HasCaughtUp(ushort behindByTick)
+        {
+            return behindByTick <= m_StopCatchingUpThresholdTick;
+        }
+
+        void StartCatchingUp()
+        {
+            m_IsCatchingUp = true;
+            Clock.Instance.SetSpeedMultiplier(m_CatchupSpeed);
+        }
+
+        void StopCatchingUp()
+        {
+            Clock.Instance.ResetSpeedMultiplier();
+            m_IsCatchingUp = false;
+        }
+
+        void OnConnectionSetupComplete()
+        {
+            SendPing();
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)
@@ -146,6 +159,18 @@ namespace Rollback
 
                 // Continually circulate the ping
                 SendPing();
+            }
+        }
+
+        void AddRTTSec(float RTTSec)
+        {
+            m_SumRTTsSec += RTTSec;
+            m_RTTsSec.AddLast(RTTSec);
+
+            if (m_RTTsSec.Count > m_MaxRTTsCount)
+            {
+                m_SumRTTsSec -= m_RTTsSec.First.Value;
+                m_RTTsSec.RemoveFirst();
             }
         }
 
