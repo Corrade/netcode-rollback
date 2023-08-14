@@ -21,13 +21,16 @@ namespace Rollback
         public Vector2 GroundNormal;
         public Collider2D GroundCollider;
 
+        // Unfortunately can't elegantly wrap these listenable variables in a
+        // templated class as the assignment/set operator can't be overloaded.
         public Vector2 CandidateVelocity
         {
             get { return m_CandidateVelocity; }
             set
             {
+                if (m_CandidateVelocity == value) return;
                 m_CandidateVelocity = value;
-                CandidateVelocityChanged?.Invoke();
+                CandidateVelocityChanged?.Invoke(value);
             }
         }
 
@@ -36,8 +39,9 @@ namespace Rollback
             get { return m_IsGrounded; }
             set
             {
+                if (m_IsGrounded == value) return;
                 m_IsGrounded = value;
-                IsGroundedChanged?.Invoke();
+                IsGroundedChanged?.Invoke(value);
             }
         }
 
@@ -46,8 +50,9 @@ namespace Rollback
             get { return m_IsFacingLeft; }
             set
             {
+                if (m_IsFacingLeft == value) return;
                 m_IsFacingLeft = value;
-                IsFacingLeftChanged?.Invoke();
+                IsFacingLeftChanged?.Invoke(value);
             }
         }
 
@@ -56,15 +61,16 @@ namespace Rollback
             get { return m_IsKicking; }
             set
             {
+                if (m_IsKicking == value) return;
                 m_IsKicking = value;
-                IsKickingChanged?.Invoke();
+                IsKickingChanged?.Invoke(m_IsKicking);
             }
         }
 
-        public event Action CandidateVelocityChanged;
-        public event Action IsGroundedChanged;
-        public event Action IsFacingLeftChanged;
-        public event Action IsKickingChanged;
+        public event Action<Vector2> CandidateVelocityChanged;
+        public event Action<bool> IsGroundedChanged;
+        public event Action<bool> IsFacingLeftChanged;
+        public event Action<bool> IsKickingChanged;
 
         Vector2 m_CandidateVelocity;
         bool m_IsGrounded;

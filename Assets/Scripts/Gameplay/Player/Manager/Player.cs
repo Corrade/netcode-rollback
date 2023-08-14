@@ -63,6 +63,7 @@ namespace Rollback
             MetadataManager.Initialise(id, name);
             m_InputManager.Initialise();
             m_MovementManager.Reset();
+            m_AnimationManager.Reset();
         }
 
         // This should only be called for non-first rounds since
@@ -74,6 +75,7 @@ namespace Rollback
         {
             m_MovementManager.Reset();
             m_InputManager.ResetForRound(startTick);
+            m_AnimationManager.Reset();
         }
 
         public bool HasInput(ushort tick)

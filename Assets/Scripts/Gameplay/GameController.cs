@@ -36,6 +36,7 @@ namespace Rollback
         ushort m_IntermissionStartTick;
         ushort m_IntermissionFinishTick;
         bool m_PeerPlayerMetadataReceived = false;
+        Action<ushort> m_GameLoop;
         const float m_IntermissionDurationSec = 0.8f;
 
         #if DEVELOPMENT_BUILD || UNITY_EDITOR
@@ -53,6 +54,8 @@ namespace Rollback
             // Progress physics only when Physics2D.Simulate() is called, as
             // opposed to automatically in FixedUpdate()
             Physics2D.simulationMode = SimulationMode2D.Script;
+
+            m_GameLoop = DebugFlags.IsDebuggingSingleplayer ? DebugSingleplayerGameLoop : GameLoop;
         }
 
         void Start()
@@ -79,7 +82,7 @@ namespace Rollback
 
         void OnDestroy()
         {
-            Clock.Instance.TickUpdated -= DebugFlags.IsDebuggingSingleplayer ? DebugSingleplayerGameLoop : GameLoop;
+            Clock.Instance.TickUpdated -= ExecuteGameLoop;
         }
 
         void OnConnectionSetupComplete()
@@ -120,7 +123,7 @@ namespace Rollback
 
             ResetForRound();
 
-            Clock.Instance.TickUpdated += DebugFlags.IsDebuggingSingleplayer ? DebugSingleplayerGameLoop : GameLoop;
+            Clock.Instance.TickUpdated += ExecuteGameLoop;
             Clock.Instance.Begin();
         }
 
@@ -155,19 +158,26 @@ namespace Rollback
             m_IsFirstRound = false;
         }
 
-        void GameLoop(ushort currentTick)
+        void ExecuteGameLoop(ushort currentTick)
         {
             DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() start", $"GameLoop() start: currentTick={currentTick}");
 
+            // Bandaid workaround: ideally, rendering should be decoupled from simulation
+            SetSpritesVisible(visible: false);
+            m_GameLoop(currentTick);
+            SetSpritesVisible(visible: true);
+
+            DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() end", $"GameLoop() end");
+        }
+
+        void GameLoop(ushort currentTick)
+        {
             if (m_IsInIntermission)
             {
                 // Ensure the peer has enough input to get to intermission
                 SelfPlayer.SendUnackedInputs(untilTickExclusive: TickService.Add(m_IntermissionStartTick, 1));
                 return;
             }
-
-            // Bandaid workaround: ideally, rendering should be decoupled from simulation
-            SetSpritesVisible(visible: false);
 
             SelfPlayer.WriteInput(currentTick);
             SelfPlayer.SendUnackedInputs(untilTickExclusive: TickService.Add(currentTick, 1));
@@ -224,19 +234,31 @@ namespace Rollback
             }
 
             DebugUI.WriteSequenced(DebugGroup.Core, "Unofficial simulation end", $"Unofficial simulation end: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
-
-            SetSpritesVisible(visible: true);
         }
 
         void DebugSingleplayerGameLoop(ushort currentTick)
         {
-            SetSpritesVisible(visible: false);
-
             SelfPlayer.WriteInput(currentTick);
-            SelfPlayer.Simulate(currentTick);
-            RunSimulation(isSimulatingOfficially: true, tick: currentTick);
 
-            SetSpritesVisible(visible: true);
+            // We still rollback to be able to test rollback-related
+            // mechanics, e.g. animation rollback
+            ushort t = RollbackManager.Rollback();
+
+            // Never simulate up to more than 8 ticks behind the current tick
+            // so that we force rollback to occur
+            for (; TickService.IsBeforeOrEqual(t, TickService.Subtract(currentTick, 8)); t = TickService.Add(t, 1))
+            {
+                SelfPlayer.Simulate(t);
+                RunSimulation(isSimulatingOfficially: true, tick: t);
+            }
+
+            RollbackManager.SaveRollbackState(t);
+
+            for (; TickService.IsBeforeOrEqual(t, currentTick); t = TickService.Add(t, 1))
+            {
+                SelfPlayer.Simulate(t);
+                RunSimulation(isSimulatingOfficially: false, tick: t);
+            }
         }
 
         void SetSpritesVisible(bool visible)

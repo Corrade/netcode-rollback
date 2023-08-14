@@ -58,6 +58,27 @@ namespace Rollback
         public Vector2 Position => m_RB2D.position;
         public Vector2 KickColliderPosition => KickCollider.transform.position;
 
+        public event Action<Vector2> CandidateVelocityChanged
+        {
+            add { m_State.CandidateVelocityChanged += value; }
+            remove { m_State.CandidateVelocityChanged -= value; }
+        }
+        public event Action<bool> IsGroundedChanged
+        {
+            add { m_State.IsGroundedChanged += value; }
+            remove { m_State.IsGroundedChanged -= value; }
+        }
+        public event Action<bool> IsFacingLeftChanged
+        {
+            add { m_State.IsFacingLeftChanged += value; }
+            remove { m_State.IsFacingLeftChanged -= value; }
+        }
+        public event Action<bool> IsKickingChanged
+        {
+            add { m_State.IsKickingChanged += value; }
+            remove { m_State.IsKickingChanged -= value; }
+        }
+
         Vector3 m_KickVector;
 
         InputManager m_InputManager;
@@ -286,7 +307,7 @@ namespace Rollback
             }
 
             // Reset grounding variables
-            m_State.IsGrounded = false;
+            bool newIsGrounded = false; // Cache changes since the actual variable is tied to events
             m_State.GroundNormal = Vector2.up;
             m_State.GroundCollider = null;
 
@@ -315,11 +336,10 @@ namespace Rollback
                     continue;
                 }
 
-                m_State.IsGrounded = true;
+                newIsGrounded = true;
                 m_State.GroundNormal = hit.normal;
                 m_State.GroundCollider = hit.collider;
                 m_State.CandidatePosition = hit.centroid;
-
                 StopKicking();
 
                 // Prevent scaling steep walls with jump resets
@@ -329,9 +349,11 @@ namespace Rollback
                     // is at an intersection between flat and steep grounds,
                     // they will not be grounded on the steeper surface and
                     // forced to slide into the flat ground indefinitely
-                    return;
+                    break;
                 }
             }
+
+            m_State.IsGrounded = newIsGrounded;
         }
 
         // Set m_State.CandidateVelocity based on input and grounding
@@ -487,18 +509,18 @@ namespace Rollback
             m_State.IsFacingLeft = (m_State.CandidateVelocity.x < 0);
         }
 
-        void OnIsFacingLeftChanged()
+        void OnIsFacingLeftChanged(bool isFacingLeft)
         {
             Vector3 newScale = transform.localScale;
 
-            newScale.x = m_State.IsFacingLeft
+            newScale.x = isFacingLeft
                 ? -1 * Math.Abs(newScale.x)
                 : Math.Abs(newScale.x);
 
             transform.localScale = newScale;
         }
 
-        void OnIsKickingChanged()
+        void OnIsKickingChanged(bool isKicking)
         {
             SyncKickColliderWithState();
         }

@@ -36,20 +36,22 @@ namespace Rollback
 
             // gameManager.RoundStarted += OnRoundStarted;
 
-            // TODO
-            /*
             m_MovementManager.CandidateVelocityChanged += OnCandidateVelocityChanged;
             m_MovementManager.IsGroundedChanged += OnIsGroundedChanged;
             m_MovementManager.IsKickingChanged += OnIsKickingChanged;
 
-            the rollback state should be in one class, accessed by both the animation manager and the movement manager.
-            store it in player
-            "RollbackState"
-            */
+            //the rollback state should be in one class, accessed by both the animation manager and the movement manager.
+            //store it in player
+            //"RollbackState"
 
             m_MetadataManager.LifeLost += OnLifeLost;
 
             Assert.IsTrue(m_Animator.layerCount == 1);
+        }
+
+        public void Reset()
+        {
+            // reset
         }
 
         public void SaveRollbackState()
@@ -63,67 +65,55 @@ namespace Rollback
 
             AnimatorStateInfo info = m_Animator.GetCurrentAnimatorStateInfo(0);
 
-
-
             RunPresentation() from game loop so that this code only runs once per frame
             */
 
             AnimatorClipInfo[] m_CurrentClipInfo = m_Animator.GetCurrentAnimatorClipInfo(0);
-            //Access the current length of the clip
+            AnimatorStateInfo m_CurrentStateInfo = m_Animator.GetCurrentAnimatorStateInfo(0);
 
             // Only one active clip at a time (no blending)
             Assert.IsTrue(m_CurrentClipInfo.Length == 1);
+            AnimatorClipInfo m_CurrentClip = m_CurrentClipInfo[0];
 
-            float m_CurrentClipLength = m_CurrentClipInfo[0].clip.length;
-            //Access the Animation clip name
-            string m_ClipName = m_CurrentClipInfo[0].clip.name;
-
-            AnimatorStateInfo m_CurrentStateInfo = m_Animator.GetCurrentAnimatorStateInfo(0);
-            float len = m_CurrentStateInfo.length;
+            string name = m_CurrentClip.clip.name;
+            float originalLength = m_CurrentClip.clip.length;
+            float speedAdjustedLength = m_CurrentStateInfo.length;
             float t = m_CurrentStateInfo.normalizedTime;
-            /*
-            name=Idle
-            length is 0.16666 (animation length)
-            len is 0.666 (state length = animation length * speed)
-            t is the running time! nice
-            */
 
-            DebugUI.Write(DebugGroup.Animation, "h", $"! name={m_ClipName}, length={m_CurrentClipLength}, len={len}, t={t}");
+            DebugUI.Write(DebugGroup.Animation, "h", $"! name={name}, originalLength={originalLength}, speedAdjustedLength={speedAdjustedLength}, t={t}");
         }
 
         public void Rollback()
         {
             /*
             load saved data
-            but note that the delegates below will also be called...
             */
+
+            // The delegates below will be called beforehand as the movement
+            // manager is rolled back first.
             ;
         }
 
-        void OnRoundStarted()
+        void OnCandidateVelocityChanged(Vector2 candidateVelocity)
         {
-            // reset
+            m_Animator.SetFloat("Velocity", candidateVelocity.magnitude);
+            m_Animator.SetBool("IsJumping", candidateVelocity.y > 0);
         }
 
-        void OnCandidateVelocityChanged()
+        void OnIsGroundedChanged(bool isGrounded)
         {
-            // velocity.y => jump => movement state change (candidate velocity)
-            // velocity.x => move => movement state change (candidate velocity)
+            m_Animator.SetTrigger("Landed");
         }
 
-        void OnIsGroundedChanged()
+        void OnIsKickingChanged(bool isKicking)
         {
-            // land => movement state change (is grounded)
-        }
-
-        void OnIsKickingChanged()
-        {
-            // kick => movement state change (is kicking)
+            m_Animator.SetBool("IsKicking", isKicking);
         }
 
         void OnLifeLost(MetadataManager metadataManager)
         {
-            // => hit anim until round started
+            m_Animator.SetTrigger("GotHit");
+            // => hit anim until reset
         }
     }
 }
