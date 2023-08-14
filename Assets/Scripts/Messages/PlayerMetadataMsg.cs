@@ -10,7 +10,7 @@ namespace Rollback
     public class PlayerMetadataMsg : IDarkRiftSerializable
     {
         public string Name { get; private set; }
-        
+
         public PlayerMetadataMsg() {}
 
         public PlayerMetadataMsg(string name)

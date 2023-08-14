@@ -19,7 +19,7 @@ namespace Rollback
 
         [SerializeField]
         RollbackManager RollbackManager;
-    
+
         [SerializeField]
         public SelfPlayer SelfPlayer;
 

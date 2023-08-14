@@ -19,7 +19,7 @@ namespace Rollback
 
         [SerializeField]
         TMP_InputField PeerAddressTextInput;
-        
+
         [SerializeField]
         TMP_InputField PeerPortTextInput;
 

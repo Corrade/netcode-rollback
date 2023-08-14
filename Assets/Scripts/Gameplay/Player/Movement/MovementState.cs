@@ -22,7 +22,7 @@ namespace Rollback
         public Collider2D GroundCollider;
 
         // Unfortunately can't elegantly wrap these listenable variables in a
-        // templated class as the assignment/set operator can't be overloaded.
+        // templated class as the assignment/set operator can't be overloaded
         public Vector2 CandidateVelocity
         {
             get { return m_CandidateVelocity; }

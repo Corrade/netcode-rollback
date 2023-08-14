@@ -254,7 +254,7 @@ namespace Rollback
 
             transform.position = m_State.RigidbodyPosition;
             Physics2D.SyncTransforms();
-            
+
             Assert.IsTrue(m_RB2D.position == m_State.RigidbodyPosition);
 
             DebugUI.WriteSequenced(
@@ -383,7 +383,7 @@ namespace Rollback
                 else if (!m_State.IsKicking)
                 {
                     if (m_InputManager.GetInputDown(tick, InputMasks.Kick))
-                    {            
+                    {
                         Kick();
                         return;
                     }
@@ -422,7 +422,7 @@ namespace Rollback
             UpdateIsFacingLeftBasedOnVelocity();
 
             m_State.CandidateVelocity = KickMagnitude * m_KickVector;
-            
+
             if (!m_State.IsFacingLeft)
             {
                 m_State.CandidateVelocity = new Vector2(-m_State.CandidateVelocity.x, m_State.CandidateVelocity.y);
