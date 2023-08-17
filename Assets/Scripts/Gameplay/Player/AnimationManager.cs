@@ -80,7 +80,11 @@ namespace Rollback
             float speedAdjustedLength = m_CurrentStateInfo.length;
             float t = m_CurrentStateInfo.normalizedTime;
 
-            DebugUI.Write(DebugGroup.Animation, "h", $"! name={name}, originalLength={originalLength}, speedAdjustedLength={speedAdjustedLength}, t={t}");
+            DebugUI.WriteSequenced(
+                DebugGroup.Animation,
+                $"{m_MetadataManager.Id} AnimationManager.SaveRollbackState()",
+                $"id={m_MetadataManager.Id} AnimationManager.SaveRollbackState(): name={name}, originalLength={originalLength}, speedAdjustedLength={speedAdjustedLength}, t={t}"
+            );
         }
 
         public void Rollback()
@@ -96,13 +100,16 @@ namespace Rollback
 
         void OnCandidateVelocityChanged(Vector2 candidateVelocity)
         {
-            m_Animator.SetFloat("Velocity", candidateVelocity.magnitude);
             m_Animator.SetBool("IsJumping", candidateVelocity.y > 0);
+            // say in this state for n ms UNLESS we're rolling back or kicking, in which case transition back immediately
+
+            m_Animator.SetFloat("Velocity", candidateVelocity.magnitude);
         }
 
         void OnIsGroundedChanged(bool isGrounded)
         {
             m_Animator.SetTrigger("Landed");
+            // say in this state for n ms UNLESS we're rolling back, in which case transition back immediately
         }
 
         void OnIsKickingChanged(bool isKicking)
