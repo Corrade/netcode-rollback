@@ -63,16 +63,19 @@ namespace Rollback
             add { m_State.CandidateVelocityChanged += value; }
             remove { m_State.CandidateVelocityChanged -= value; }
         }
+
         public event Action<bool> IsGroundedChanged
         {
             add { m_State.IsGroundedChanged += value; }
             remove { m_State.IsGroundedChanged -= value; }
         }
+
         public event Action<bool> IsFacingLeftChanged
         {
             add { m_State.IsFacingLeftChanged += value; }
             remove { m_State.IsFacingLeftChanged -= value; }
         }
+
         public event Action<bool> IsKickingChanged
         {
             add { m_State.IsKickingChanged += value; }
@@ -107,12 +110,12 @@ namespace Rollback
             m_State.IsFacingLeftChanged += OnIsFacingLeftChanged;
             m_State.IsKickingChanged += OnIsKickingChanged;
 
-            SimulationManager.Instance.Simulated += OnSimulated;
+            SimulationManager.Instance.SimulationProgressed += OnSimulationProgressed;
         }
 
         void OnDestroy()
         {
-            SimulationManager.Instance.Simulated -= OnSimulated;
+            SimulationManager.Instance.SimulationProgressed -= OnSimulationProgressed;
         }
 
         public void Reset()
@@ -280,7 +283,7 @@ namespace Rollback
             m_State.IsKicking = false;
         }
 
-        void OnSimulated(ushort untilTickExclusive)
+        void OnSimulationProgressed(ushort untilTickExclusive)
         {
             // The simulation has just applied any changes from Simulate()
             // to m_RB2D.position

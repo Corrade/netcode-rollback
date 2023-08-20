@@ -15,5 +15,6 @@ namespace Rollback
     public class SimulationStateManager : MonoBehaviour
     {
         public bool IsSimulatingOfficially;
+        public bool IsRollingBack;
     }
 }

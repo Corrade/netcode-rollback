@@ -238,6 +238,8 @@ namespace Rollback
 
         void DebugSingleplayerGameLoop(ushort currentTick)
         {
+            // TODO temporary logs
+            Debug.Log("begin anim name=" + SelfPlayer.CurrentAnimationName);
             SelfPlayer.WriteInput(currentTick);
 
             // We still rollback to be able to test rollback-related
@@ -252,13 +254,16 @@ namespace Rollback
                 RunSimulation(isSimulatingOfficially: true, tick: t);
             }
 
+            Debug.Log("just before save rb state name=" + SelfPlayer.CurrentAnimationName);
             RollbackManager.SaveRollbackState(t);
+            Debug.Log("just after save rb state name=" + SelfPlayer.CurrentAnimationName);
 
             for (; TickService.IsBeforeOrEqual(t, currentTick); t = TickService.Add(t, 1))
             {
                 SelfPlayer.Simulate(t);
                 RunSimulation(isSimulatingOfficially: false, tick: t);
             }
+            Debug.Log("end anim name=" + SelfPlayer.CurrentAnimationName);
         }
 
         void SetSpritesVisible(bool visible)
@@ -272,7 +277,7 @@ namespace Rollback
             SelfPlayer.IsSimulatingOfficially = isSimulatingOfficially;
             PeerPlayer.IsSimulatingOfficially = isSimulatingOfficially;
 
-            SimulationManager.Instance.Simulate(isSimulatingOfficially, tick);
+            SimulationManager.Instance.ProgressSimulation(isSimulatingOfficially, tick);
 
             #if DEVELOPMENT_BUILD || UNITY_EDITOR
             if (isSimulatingOfficially)

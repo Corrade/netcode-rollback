@@ -940,7 +940,7 @@ GameObject:
   - component: {fileID: 832537633}
   - component: {fileID: 832537634}
   - component: {fileID: 832537635}
-  - component: {fileID: 832537637}
+  - component: {fileID: 832537638}
   m_Layer: 0
   m_Name: SelfPlayer
   m_TagString: Untagged
@@ -1053,7 +1053,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_Sprite: {fileID: 21300000, guid: 3797bb81d4584a668ce8f4337bc31fd4, type: 3}
-  m_Color: {r: 0.9818489, g: 1, b: 0.6556604, a: 1}
+  m_Color: {r: 0.7294118, g: 0.93140113, b: 0.972549, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -1136,6 +1136,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   IsSimulatingOfficially: 0
+  IsRollingBack: 0
 --- !u!95 &832537636
 Animator:
   serializedVersion: 4
@@ -1156,7 +1157,7 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
---- !u!114 &832537637
+--- !u!114 &832537638
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1165,7 +1166,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 832537625}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 426e37ac698cfa641865bdd254054366, type: 3}
+  m_Script: {fileID: 11500000, guid: 7647d2c310d6d8e498bdea3aef6709f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &858287199
@@ -1998,7 +1999,7 @@ GameObject:
   - component: {fileID: 1748627600}
   - component: {fileID: 1748627602}
   - component: {fileID: 1748627603}
-  - component: {fileID: 1748627604}
+  - component: {fileID: 1748627606}
   m_Layer: 0
   m_Name: PeerPlayer
   m_TagString: Untagged
@@ -2064,7 +2065,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 21300000, guid: 3797bb81d4584a668ce8f4337bc31fd4, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 0.7971698, b: 0.91163474, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -2194,18 +2195,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   IsSimulatingOfficially: 0
---- !u!114 &1748627604
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1748627592}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 426e37ac698cfa641865bdd254054366, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  IsRollingBack: 0
 --- !u!95 &1748627605
 Animator:
   serializedVersion: 4
@@ -2226,6 +2216,18 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
+--- !u!114 &1748627606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1748627592}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7647d2c310d6d8e498bdea3aef6709f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1749903530
 GameObject:
   m_ObjectHideFlags: 0

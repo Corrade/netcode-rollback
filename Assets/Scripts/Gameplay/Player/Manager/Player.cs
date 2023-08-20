@@ -22,11 +22,18 @@ namespace Rollback
         public bool IsDefeated => MetadataManager.IsDefeated;
         public Vector2 Position => m_MovementManager.Position;
         public Vector2 KickColliderPosition => m_MovementManager.KickColliderPosition;
+        public string CurrentAnimationName => m_AnimationManager.GetCurrentAnimationName();
 
         public bool IsSimulatingOfficially
         {
             get { return m_SimulationStateManager.IsSimulatingOfficially; }
             set { m_SimulationStateManager.IsSimulatingOfficially = value; }
+        }
+
+        public bool IsRollingBack
+        {
+            get { return m_SimulationStateManager.IsRollingBack; }
+            set { m_SimulationStateManager.IsRollingBack = value; }
         }
 
         public event Action<MetadataManager> MetadataUpdated
@@ -95,6 +102,7 @@ namespace Rollback
             Assert.IsTrue(m_InputManager.HasInput(TickService.Subtract(tick, 1)));
 
             m_MovementManager.Simulate(tick);
+            m_AnimationManager.Simulate();
         }
 
         public void SaveRollbackState()
@@ -111,6 +119,8 @@ namespace Rollback
 
         public void Rollback()
         {
+            IsRollingBack = true;
+
             DebugUI.WriteSequenced(
                 DebugGroup.Core,
                 $"{Id} Rollback() start",
@@ -125,6 +135,8 @@ namespace Rollback
                 $"{Id} Rollback() end",
                 $"id={Id} Rollback() end"
             );
+
+            IsRollingBack = false;
         }
 
         public void Teleport(Vector2 position, bool faceLeft)

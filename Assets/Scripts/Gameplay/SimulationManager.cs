@@ -19,7 +19,7 @@ namespace Rollback
     {
         public static SimulationManager Instance { get; private set; }
 
-        public event Action<ushort> Simulated;
+        public event Action<ushort> SimulationProgressed;
 
         public ushort LatestSimulationTick { get; private set; }
         public ushort LatestOfficialSimulationTick { get; private set; }
@@ -36,7 +36,7 @@ namespace Rollback
             Instance = this;
         }
 
-        public void Simulate(bool isSimulatingOfficially, ushort tick)
+        public void ProgressSimulation(bool isSimulatingOfficially, ushort tick)
         {
             LatestSimulationTick = tick;
 
@@ -51,7 +51,7 @@ namespace Rollback
 
             Physics2D.Simulate(TickService.TimeBetweenTicksSec);
 
-            Simulated?.Invoke(tick);
+            SimulationProgressed?.Invoke(tick);
         }
     }
 }
