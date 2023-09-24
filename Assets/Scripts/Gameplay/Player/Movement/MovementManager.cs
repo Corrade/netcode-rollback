@@ -57,29 +57,13 @@ namespace Rollback
 
         public Vector2 Position => m_RB2D.position;
         public Vector2 KickColliderPosition => KickCollider.transform.position;
-
-        public event Action<Vector2> CandidateVelocityChanged
-        {
-            add { m_State.CandidateVelocityChanged += value; }
-            remove { m_State.CandidateVelocityChanged -= value; }
-        }
+        public bool IsKicking => m_State.IsKicking;
+        public Vector2 Velocity => m_State.CandidateVelocity;
 
         public event Action<bool> IsGroundedChanged
         {
             add { m_State.IsGroundedChanged += value; }
             remove { m_State.IsGroundedChanged -= value; }
-        }
-
-        public event Action<bool> IsFacingLeftChanged
-        {
-            add { m_State.IsFacingLeftChanged += value; }
-            remove { m_State.IsFacingLeftChanged -= value; }
-        }
-
-        public event Action<bool> IsKickingChanged
-        {
-            add { m_State.IsKickingChanged += value; }
-            remove { m_State.IsKickingChanged -= value; }
         }
 
         Vector3 m_KickVector;

@@ -16,26 +16,22 @@ namespace Rollback
 {
     public class AnimationState
     {
-        public string Name;
-        public float NormalizedTime;
+        public float MotionTime;
+        public ushort LastLandedAtTick;
+        public bool IsHit;
 
         public void Reset()
         {
-            Name = "Idle";
-            NormalizedTime = 0.0f;
+            MotionTime = 0.0f;
+            LastLandedAtTick = 0;
+            IsHit = false;
         }
 
-        public void LoadFrom(Animator animator)
+        public void Assign(AnimationState other)
         {
-            AnimatorClipInfo[] currentClipInfo = animator.GetCurrentAnimatorClipInfo(0);
-            AnimatorStateInfo currentStateInfo = animator.GetCurrentAnimatorStateInfo(0);
-
-            // Only one active clip at a time (no blending)
-            Assert.IsTrue(currentClipInfo.Length == 1);
-            AnimatorClipInfo currentClip = currentClipInfo[0];
-
-            Name = currentClip.clip.name;
-            NormalizedTime = currentStateInfo.normalizedTime;
+            MotionTime = other.MotionTime;
+            LastLandedAtTick = other.LastLandedAtTick;
+            IsHit = other.IsHit;
         }
     }
 }

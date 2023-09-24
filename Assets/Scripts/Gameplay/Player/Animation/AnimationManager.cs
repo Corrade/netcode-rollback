@@ -24,16 +24,21 @@ namespace Rollback
         [SerializeField]
         float MotionTimeScale = 4f;
 
+        [SerializeField]
+        ushort LandAnimationDurationTick = 5;
+
+        // This can't be included in the AnimationState variables. If it was,
+        // then we'd assign it during rollback and thereby decouple it from
+        // the actual current animation name. Then, after the corresponding
+        // game loop, we'd encounter an incorrect value in SwitchToAnimation.
+        public string CurrentAnimationName { get; private set; }
+
         Animator m_Animator;
         MovementManager m_MovementManager;
         MetadataManager m_MetadataManager;
         Player m_Player;
 
-        float m_MotionTime;
-
-        bool m_IsJumping = false;
-        float m_Velocity = 0.0f;
-        bool m_IsKicking = false; 
+        AnimationState m_State = new AnimationState();
         AnimationState m_RollbackState = new AnimationState();
 
         void Awake()
@@ -43,159 +48,107 @@ namespace Rollback
             m_MetadataManager = GetComponent<MetadataManager>();
             m_Player = GetComponent<Player>();
 
-            m_MovementManager.CandidateVelocityChanged += WithNoOpDuringRollback<Vector2>(OnCandidateVelocityChanged);
-            m_MovementManager.IsGroundedChanged += WithNoOpDuringRollback<bool>(OnIsGroundedChanged);
-            m_MovementManager.IsKickingChanged += WithNoOpDuringRollback<bool>(OnIsKickingChanged);
-            m_MetadataManager.LifeLost += WithNoOpDuringRollback<MetadataManager>(OnLifeLost);
+            m_MovementManager.IsGroundedChanged += OnIsGroundedChanged;
+            m_MetadataManager.LifeLost += OnLifeLost;
 
             Assert.IsTrue(m_Animator.layerCount == 1);
-
-            SimulationManager.Instance.SimulationProgressed += OnSimulationProgressed;
 
             m_Animator.StartPlayback();
         }
 
         public void Reset()
         {
-            m_MotionTime = 0.0f;
-            m_Animator.Play("Idle", layer: 0, normalizedTime: 0.0f);
+            m_State.Reset();
             m_RollbackState.Reset();
+            SwitchToAnimation("Idle");
         }
 
         public void Simulate()
         {
-            m_MotionTime += MotionTimeScale * TickService.TimeBetweenTicksSec;
+            // Defer propagating these changes to the animator until rendering
+            m_State.MotionTime += MotionTimeScale * TickService.TimeBetweenTicksSec;
         }
 
         public void SaveRollbackState()
         {
-            // todo this may be removable
-            m_RollbackState.LoadFrom(m_Animator);
-            m_RollbackState.NormalizedTime = m_MotionTime;
-
-            // TODO temporary - tesing whethe ror not this state needs to be saved and rolled back
-            m_IsJumping = m_Animator.GetBool("IsJumping");
-            m_Velocity = m_Animator.GetFloat("Velocity");
-            m_IsKicking = m_Animator.GetBool("IsKicking");
-
-            if (m_MetadataManager.Id == 0)
-                Debug.Log("curr anim name=" + m_RollbackState.Name);
-
-            DebugUI.WriteSequenced(
-                DebugGroup.Animation,
-                $"{m_MetadataManager.Id} AnimationManager.SaveRollbackState()",
-                $"id={m_MetadataManager.Id} AnimationManager.SaveRollbackState(): Name={m_RollbackState.Name}, NormalizedTime={m_RollbackState.NormalizedTime}, m_MotionTime={m_MotionTime}"
-            );
+            m_RollbackState.Assign(m_State);
         }
 
         public void Rollback()
         {
-            /*
-            DESIGN THOUGHTS
+            m_State.Assign(m_RollbackState);
+        }
 
-            Current approach: directly switch to the stored animation via
-            Play().
+        public void Render()
+        {
+            m_Animator.SetFloat("MotionTime", m_State.MotionTime);
 
-            Previous idea #1: switch to the stored animation via a dedicated
-            trigger transition.
-            - Requires one extra transition per state
-            - Modifying the time of the stored animation afterwards isn't
-              easy
-
-            Previous idea #2: transition to a rollback state and
-            rely on the normal transitions to reach the stored animation.
-            - Cleaner animation graph than previous idea #1 since only one
-              transition (from "all states" to the rollback state) is needed
-            - More difficult to get correct. The normal transitions are
-              designed for state to flow in a natural sequence whereas rollback
-              requires "random access".
-            - Still hard to modify the time of the stored animation afterwards
-            */
-
-            m_Animator.Play(m_RollbackState.Name, layer: 0, m_RollbackState.NormalizedTime);
-            //m_Animator.Play(m_RollbackState.Name, layer: 0, 0.0f);
-            m_MotionTime = m_RollbackState.NormalizedTime;
-
-            m_Animator.SetBool("IsJumping", m_IsJumping);
-            m_Animator.SetFloat("Velocity", m_Velocity);
-            m_Animator.SetBool("IsKicking", m_IsKicking);
-
-            if (m_MetadataManager.Id == 0)
+            if (m_State.IsHit)
             {
-                Debug.Log("rolling back to " + m_RollbackState.Name + " but it says anim name=" + GetCurrentAnimationName());
+                SwitchToAnimation("Hit");
+                return;
             }
-        }
 
-        // TODO Returns a stale value for some reason, which fucks the entire logic
-        // by making SaveRollbackState() save an old state
-        public string GetCurrentAnimationName()
-        {
-            AnimatorClipInfo[] currentClipInfo = m_Animator.GetCurrentAnimatorClipInfo(0);
-            Assert.IsTrue(currentClipInfo.Length == 1);
-            AnimatorClipInfo currentClip = currentClipInfo[0];
-            return currentClip.clip.name;
-        }
-
-        void OnSimulationProgressed(ushort untilTickExclusive)
-        {
-            // We defer updating the actual parameter tied to the animator
-            // to avoid jittery visuals
-            m_Animator.SetFloat("MotionTime", m_MotionTime);
-        }
-
-        Action<T> WithNoOpDuringRollback<T>(Action<T> handler)
-        {
-            // The handlers below (OnXyzChanged) are invoked during the
-            // movement manager's rollback, but we prevent this to ensure it
-            // doesn't interfere with our rollback logic
-
-            return (T value) => {
-                if (!m_Player.IsRollingBack)
-                {
-                    handler(value);
-                }
-            };
-        }
-
-        void OnCandidateVelocityChanged(Vector2 candidateVelocity)
-        {
-            if (candidateVelocity.y > 0.0f && !Mathf.Approximately(candidateVelocity.y, 0.0f))
+            if (RecentlyLanded())
             {
-                //m_RollbackState.Name = "Jump";
+                SwitchToAnimation("Land");
+                return;
             }
-            else if (candidateVelocity.magnitude > 0.01f)
+
+            if (m_MovementManager.IsKicking)
             {
-                //m_RollbackState.Name = "Move";
+                SwitchToAnimation("Kick");
+                return;
             }
-            m_Animator.SetBool("IsJumping", candidateVelocity.y > 0.0f && !Mathf.Approximately(candidateVelocity.y, 0.0f));
-            m_Animator.SetFloat("Velocity", candidateVelocity.magnitude);
+
+            if (m_MovementManager.Velocity.y > 0.0f && !Mathf.Approximately(m_MovementManager.Velocity.y, 0.0f))
+            {
+                SwitchToAnimation("Jump");
+                return;
+            }
+
+            if (!Mathf.Approximately(m_MovementManager.Velocity.x, 0.0f))
+            {
+                SwitchToAnimation("Move");
+                return;
+            }
+
+            SwitchToAnimation("Idle");
         }
 
         void OnIsGroundedChanged(bool isGrounded)
         {
-            //m_RollbackState.Name = "Land";
-            m_Animator.SetTrigger("Landed");
-
-            if (m_MetadataManager.Id == 0)
-                Debug.Log("Land: " + GetCurrentAnimationName());
-        }
-
-        void OnIsKickingChanged(bool isKicking)
-        {
-            //m_RollbackState.Name = "Kick";
-            m_Animator.SetBool("IsKicking", isKicking);
-
-            if (m_MetadataManager.Id == 0)
-                Debug.Log("Kick: " + GetCurrentAnimationName());
+            if (isGrounded)
+            {
+                // Actually this name is misleading. We just take the
+                // current/latest tick, not the tick associated with the
+                // simulation in which the player just landed. Thankfully our
+                // approach still works and is simpler.
+                m_State.LastLandedAtTick = Clock.Instance.CurrentTick;
+            }
         }
 
         void OnLifeLost(MetadataManager metadataManager)
         {
-            ///m_RollbackState.Name = "Hit";
-            m_Animator.SetTrigger("GotHit");
+            m_State.IsHit = true;
+        }
 
-            if (m_MetadataManager.Id == 0)
-                Debug.Log("Hit: " + GetCurrentAnimationName());
+        void SwitchToAnimation(string name)
+        {
+            if (name == CurrentAnimationName)
+            {
+                return;
+            }
+
+            m_Animator.Play(name, layer: 0, normalizedTime: m_State.MotionTime % 1.0f);
+            CurrentAnimationName = name;
+
+            Debug.Log($"Switched to {CurrentAnimationName}");
+        }
+
+        bool RecentlyLanded()
+        {
+            return TickService.Subtract(Clock.Instance.CurrentTick, m_State.LastLandedAtTick) < LandAnimationDurationTick;
         }
     }
 }

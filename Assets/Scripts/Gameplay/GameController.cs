@@ -162,10 +162,9 @@ namespace Rollback
         {
             DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() start", $"GameLoop() start: currentTick={currentTick}");
 
-            // Bandaid workaround: ideally, rendering should be decoupled from simulation
-            SetSpritesVisible(visible: false);
+            RunPreGameLoop();
             m_GameLoop(currentTick);
-            SetSpritesVisible(visible: true);
+            RunPostGameLoop();
 
             DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() end", $"GameLoop() end");
         }
@@ -238,8 +237,6 @@ namespace Rollback
 
         void DebugSingleplayerGameLoop(ushort currentTick)
         {
-            // TODO temporary logs
-            Debug.Log("begin anim name=" + SelfPlayer.CurrentAnimationName);
             SelfPlayer.WriteInput(currentTick);
 
             // We still rollback to be able to test rollback-related
@@ -254,16 +251,28 @@ namespace Rollback
                 RunSimulation(isSimulatingOfficially: true, tick: t);
             }
 
-            Debug.Log("just before save rb state name=" + SelfPlayer.CurrentAnimationName);
             RollbackManager.SaveRollbackState(t);
-            Debug.Log("just after save rb state name=" + SelfPlayer.CurrentAnimationName);
 
             for (; TickService.IsBeforeOrEqual(t, currentTick); t = TickService.Add(t, 1))
             {
                 SelfPlayer.Simulate(t);
                 RunSimulation(isSimulatingOfficially: false, tick: t);
             }
-            Debug.Log("end anim name=" + SelfPlayer.CurrentAnimationName);
+        }
+
+        void RunPreGameLoop()
+        {
+            SetSpritesVisible(false);
+        }
+
+        void RunPostGameLoop()
+        {
+            SetSpritesVisible(true);
+
+            // As per common practice, we run rendering-related functions once
+            // after the game loop instead of during every tick's simulation.
+            SelfPlayer.RenderAnimation();
+            PeerPlayer.RenderAnimation();
         }
 
         void SetSpritesVisible(bool visible)

@@ -22,7 +22,6 @@ namespace Rollback
         public bool IsDefeated => MetadataManager.IsDefeated;
         public Vector2 Position => m_MovementManager.Position;
         public Vector2 KickColliderPosition => m_MovementManager.KickColliderPosition;
-        public string CurrentAnimationName => m_AnimationManager.GetCurrentAnimationName();
 
         public bool IsSimulatingOfficially
         {
@@ -152,6 +151,11 @@ namespace Rollback
         public void DisposeInputs(ushort untilTickExclusive)
         {
             m_InputManager.DisposeInputs(untilTickExclusive);
+        }
+
+        public void RenderAnimation()
+        {
+            m_AnimationManager.Render();
         }
     }
 }
