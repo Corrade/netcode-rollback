@@ -45,9 +45,7 @@ namespace Rollback
             m_SelfServer = GetComponent<XmlUnityServer>();
 
             if (DebugFlags.IsDebuggingSingleplayer)
-            {
                 return;
-            }
 
             StartCoroutine(Setup());
         }

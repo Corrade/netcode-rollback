@@ -1170,6 +1170,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MotionTimeScale: 4
+  LandAnimationDurationTick: 5
 --- !u!1 &858287199
 GameObject:
   m_ObjectHideFlags: 0
@@ -1441,10 +1442,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Input delay = 6 ticks | Artificial latency = 800ms | Artificial packet
-    loss = 5%
-
-    Pausing due to lockstep'
+  m_text: DebugDialogue
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0f6f37ecc4eaf1648aca354ebb8a6626, type: 2}
   m_sharedMaterial: {fileID: -1598678628590474304, guid: 0f6f37ecc4eaf1648aca354ebb8a6626, type: 2}
@@ -2230,6 +2228,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MotionTimeScale: 4
+  LandAnimationDurationTick: 5
 --- !u!1 &1749903530
 GameObject:
   m_ObjectHideFlags: 0

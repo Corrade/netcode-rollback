@@ -39,10 +39,8 @@ namespace Rollback
         Action<ushort> m_GameLoop;
         const float m_IntermissionDurationSec = 0.8f;
 
-        #if DEVELOPMENT_BUILD || UNITY_EDITOR
         ushort m_DebugRoundStartTick;
         int[] m_DebugTimesSimulatedOfficially = new int[TickService.MaxTick];
-        #endif
 
         void Awake()
         {
@@ -129,7 +127,8 @@ namespace Rollback
 
         void ResetForRound()
         {
-            DebugUI.WriteSequenced(DebugGroup.Core, "ResetForRound()", $"ResetForRound(): Clock.Instance.CurrentTick={Clock.Instance.CurrentTick}");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "ResetForRound()", $"ResetForRound(): Clock.Instance.CurrentTick={Clock.Instance.CurrentTick}");
 
             // This value must be the same for all players because it determines
             // the point at which the teleports are applied
@@ -148,9 +147,10 @@ namespace Rollback
 
             RollbackManager.SaveRollbackState(roundStartTick);
 
-            #if DEVELOPMENT_BUILD || UNITY_EDITOR
-            m_DebugRoundStartTick = roundStartTick;
-            #endif
+            if (DebugFlags.IsDebugging)
+            {
+                m_DebugRoundStartTick = roundStartTick;
+            }
         }
 
         void StopRound()
@@ -160,13 +160,15 @@ namespace Rollback
 
         void ExecuteGameLoop(ushort currentTick)
         {
-            DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() start", $"GameLoop() start: currentTick={currentTick}");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() start", $"GameLoop() start: currentTick={currentTick}");
 
             RunPreGameLoop();
             m_GameLoop(currentTick);
             RunPostGameLoop();
 
-            DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() end", $"GameLoop() end");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "GameLoop() end", $"GameLoop() end");
         }
 
         void GameLoop(ushort currentTick)
@@ -185,12 +187,14 @@ namespace Rollback
             // to SaveRollbackState()
             ushort t = RollbackManager.Rollback();
 
-            DebugUI.WriteSequenced(DebugGroup.Core, "Rolled back", $"Rolled back: tick={t}");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "Rolled back", $"Rolled back: tick={t}");
 
             // t <= currentTick
             Assert.IsTrue(TickService.IsBeforeOrEqual(t, currentTick));
 
-            DebugUI.WriteSequenced(DebugGroup.Core, "Official simulation start", $"Official simulation start: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "Official simulation start", $"Official simulation start: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             // Simulate while both players' inputs are present, starting from
             // and including t
@@ -201,14 +205,18 @@ namespace Rollback
                 RunSimulation(isSimulatingOfficially: true, tick: t);
             }
 
-            DebugUI.WriteSequenced(DebugGroup.Core, "Official simulation end", $"Official simulation end: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "Official simulation end", $"Official simulation end: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             AssertSimulatedOfficiallyExactlyOnceUpTo(tickExclusive: t);
 
-            DebugUI.ShowGhost(DebugGroup.Core, "Self ghost", SelfPlayer.Position);
-            DebugUI.ShowGhost(DebugGroup.Core, "Self kick collider", SelfPlayer.KickColliderPosition);
-            DebugUI.ShowGhost(DebugGroup.Core, "Peer ghost", PeerPlayer.Position);
-            DebugUI.ShowGhost(DebugGroup.Core, "Peer kick collider", PeerPlayer.KickColliderPosition);
+            if (DebugFlags.IsDebugging)
+            {
+                DebugUI.ShowGhost(DebugGroup.Core, "Self ghost", SelfPlayer.Position);
+                DebugUI.ShowGhost(DebugGroup.Core, "Self kick collider", SelfPlayer.KickColliderPosition);
+                DebugUI.ShowGhost(DebugGroup.Core, "Peer ghost", PeerPlayer.Position);
+                DebugUI.ShowGhost(DebugGroup.Core, "Peer kick collider", PeerPlayer.KickColliderPosition);
+            }
 
             // t <= currentTick+1
             Assert.IsTrue(TickService.IsBeforeOrEqual(t, TickService.Add(currentTick, 1)));
@@ -219,7 +227,8 @@ namespace Rollback
             // From the guard of the previous loop
             Assert.IsTrue(!PeerPlayer.HasInput(t) || TickService.IsAfter(t, currentTick));
 
-            DebugUI.WriteSequenced(DebugGroup.Core, "Unofficial simulation start", $"Unofficial simulation start: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "Unofficial simulation start", $"Unofficial simulation start: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
             // Finish the simulation if needed by performing prediction and
             // extrapolation
@@ -232,7 +241,8 @@ namespace Rollback
                 RunSimulation(isSimulatingOfficially: false, tick: t);
             }
 
-            DebugUI.WriteSequenced(DebugGroup.Core, "Unofficial simulation end", $"Unofficial simulation end: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "Unofficial simulation end", $"Unofficial simulation end: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
         }
 
         void DebugSingleplayerGameLoop(ushort currentTick)
@@ -288,12 +298,10 @@ namespace Rollback
 
             SimulationManager.Instance.ProgressSimulation(isSimulatingOfficially, tick);
 
-            #if DEVELOPMENT_BUILD || UNITY_EDITOR
-            if (isSimulatingOfficially)
+            if (DebugFlags.IsDebugging && isSimulatingOfficially)
             {
                 m_DebugTimesSimulatedOfficially[tick]++;
             }
-            #endif
         }
 
         void OnLifeLost(MetadataManager metadataManager)
@@ -316,7 +324,8 @@ namespace Rollback
             m_IntermissionStartTick = SimulationManager.Instance.LatestOfficialSimulationTick;
             m_IntermissionFinishTick = TickService.Add(m_IntermissionStartTick, TickService.SecondsToTicks(m_IntermissionDurationSec));
 
-            DebugUI.WriteSequenced(DebugGroup.Core, "Intermission()", $"Intermission(): m_IntermissionStartTick={m_IntermissionStartTick}, m_IntermissionFinishTick={m_IntermissionFinishTick}");
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(DebugGroup.Core, "Intermission()", $"Intermission(): m_IntermissionStartTick={m_IntermissionStartTick}, m_IntermissionFinishTick={m_IntermissionFinishTick}");
 
             StopRound();
 
@@ -350,13 +359,14 @@ namespace Rollback
         // standards).
         void AssertSimulatedOfficiallyExactlyOnceUpTo(ushort tickExclusive)
         {
-            #if DEVELOPMENT_BUILD || UNITY_EDITOR
+            if (!DebugFlags.IsDebugging)
+                return;
+
             for (ushort t = m_DebugRoundStartTick; TickService.IsBefore(t, tickExclusive); t = TickService.Add(t, 1))
             {
                 Assert.IsTrue(m_DebugTimesSimulatedOfficially[t] > 0);
                 Assert.IsTrue(m_DebugTimesSimulatedOfficially[t] < 2);
             }
-            #endif
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)

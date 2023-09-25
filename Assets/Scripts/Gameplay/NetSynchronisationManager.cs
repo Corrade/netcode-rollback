@@ -14,8 +14,8 @@ namespace Rollback
 {
     public class NetSynchronisationManager : MonoBehaviour
     {
-        const int m_StartCatchingUpThresholdTick = 6;
-        const int m_StopCatchingUpThresholdTick = 2;
+        const int m_StartCatchingUpThresholdTick = 3;
+        const int m_StopCatchingUpThresholdTick = 1;
         const float m_CatchupSpeed = 2f;
 
         const int m_MaxRTTsCount = 5;
@@ -29,6 +29,7 @@ namespace Rollback
         float m_ReceivedLatestPeerPingAtSec;
 
         bool m_IsCatchingUp = false;
+        bool m_IsSyncEnabled = false;
 
         void Start()
         {
@@ -39,20 +40,22 @@ namespace Rollback
         void Update()
         {
             if (DebugFlags.IsDebuggingSingleplayer)
-            {
                 return;
-            }
+            
+            if (!m_IsSyncEnabled)
+                return;
 
             ushort peerCurrentTick = EstimatePeerCurrentTick();
             ushort behindByTick = TickService.IsAfter(peerCurrentTick, Clock.Instance.CurrentTick)
                 ? TickService.Subtract(peerCurrentTick, Clock.Instance.CurrentTick)
                 : (ushort)0;
 
-            DebugUI.Write(
-                DebugGroup.Networking,
-                "RTT",
-                $"RTT={EstimateRTTSec()}, peer current tick={peerCurrentTick}, behindByTick={behindByTick}"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.Write(
+                    DebugGroup.Networking,
+                    "RTT",
+                    $"RTT={EstimateRTTSec()}, peer current tick={peerCurrentTick}, behindByTick={behindByTick}"
+                );
 
             if (m_IsCatchingUp)
             {
@@ -102,7 +105,9 @@ namespace Rollback
             true for non-taxing projects like this one.
             */
 
-            return m_SumRTTsSec / m_RTTsSec.Count;
+            return m_RTTsSec.Count == 0
+                ? 0
+                : m_SumRTTsSec / m_RTTsSec.Count;
         }
 
         bool NeedsToCatchUp(ushort behindByTick)
@@ -130,6 +135,7 @@ namespace Rollback
         void OnConnectionSetupComplete()
         {
             SendPing();
+            m_IsSyncEnabled = true;
         }
 
         void OnMessageReceived(object sender, MessageReceivedEventArgs e)

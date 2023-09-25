@@ -121,11 +121,12 @@ namespace Rollback
 
         public void SendUnackedInputs(ushort untilTickExclusive)
         {
-            DebugUI.WriteSequenced(
-                DebugGroup.Input,
-                "SendUnackedInputs()",
-                $"SendUnackedInputs(): sending [{m_NextTickToSend}, {untilTickExclusive}) with buffer [{m_InputBuffer.StartInclusive}, {m_InputBuffer.EndExclusive})"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(
+                    DebugGroup.Input,
+                    "SendUnackedInputs()",
+                    $"SendUnackedInputs(): sending [{m_NextTickToSend}, {untilTickExclusive}) with buffer [{m_InputBuffer.StartInclusive}, {m_InputBuffer.EndExclusive})"
+                );
 
             List<ushort> inputs = new List<ushort>();
 

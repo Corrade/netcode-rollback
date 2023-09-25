@@ -76,10 +76,8 @@ namespace Rollback
         MovementState m_State = new MovementState();
         MovementState m_RollbackState = new MovementState();
 
-        #if DEVELOPMENT_BUILD || UNITY_EDITOR
         MovementState[] m_DebugStateHistory = new MovementState[TickService.MaxTick];
         bool[] m_DebugStateSimulated = new bool[TickService.MaxTick];
-        #endif
 
         void Awake()
         {
@@ -117,11 +115,12 @@ namespace Rollback
 
             m_State.CandidatePosition = m_RB2D.position;
 
-            DebugUI.WriteSequenced(
-                DebugGroup.Movement,
-                $"{m_MetadataManager.Id} MovementManager.Simulate() start",
-                $"id={m_MetadataManager.Id} MovementManager.Simulate() start: m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(
+                    DebugGroup.Movement,
+                    $"{m_MetadataManager.Id} MovementManager.Simulate() start",
+                    $"id={m_MetadataManager.Id} MovementManager.Simulate() start: m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+                );
 
             GroundCheck();
             ProposeVelocity(tick, deltaTime);
@@ -144,33 +143,36 @@ namespace Rollback
                 // then (see OnSimulated()).
             }
 
-            DebugUI.WriteSequenced(
-                DebugGroup.Movement,
-                $"{m_MetadataManager.Id} MovementManager.Simulate() end",
-                $"id={m_MetadataManager.Id} MovementManager.Simulate() end: m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(
+                    DebugGroup.Movement,
+                    $"{m_MetadataManager.Id} MovementManager.Simulate() end",
+                    $"id={m_MetadataManager.Id} MovementManager.Simulate() end: m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+                );
 
             UpdateIsFacingLeftBasedOnVelocity();
         }
 
         public void SaveRollbackState()
         {
-            DebugUI.WriteSequenced(
-                DebugGroup.Movement,
-                $"{m_MetadataManager.Id} MovementManager.SaveRollbackState()",
-                $"id={m_MetadataManager.Id} MovementManager.SaveRollbackState(): m_State.RigidbodyPosition={m_State.RigidbodyPosition}"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(
+                    DebugGroup.Movement,
+                    $"{m_MetadataManager.Id} MovementManager.SaveRollbackState()",
+                    $"id={m_MetadataManager.Id} MovementManager.SaveRollbackState(): m_State.RigidbodyPosition={m_State.RigidbodyPosition}"
+                );
 
             m_RollbackState.Assign(m_State);
         }
 
         public void Rollback()
         {
-            DebugUI.WriteSequenced(
-                DebugGroup.Movement,
-                $"{m_MetadataManager.Id} MovementManager.Rollback() start",
-                $"id={m_MetadataManager.Id} MovementManager.Rollback() start: transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(
+                    DebugGroup.Movement,
+                    $"{m_MetadataManager.Id} MovementManager.Rollback() start",
+                    $"id={m_MetadataManager.Id} MovementManager.Rollback() start: transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
+                );
 
             m_State.Assign(m_RollbackState);
 
@@ -244,11 +246,12 @@ namespace Rollback
 
             Assert.IsTrue(m_RB2D.position == m_State.RigidbodyPosition);
 
-            DebugUI.WriteSequenced(
-                DebugGroup.Movement,
-                $"{m_MetadataManager.Id} MovementManager.Rollback() end",
-                $"id={m_MetadataManager.Id} MovementManager.Rollback() end: transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(
+                    DebugGroup.Movement,
+                    $"{m_MetadataManager.Id} MovementManager.Rollback() end",
+                    $"id={m_MetadataManager.Id} MovementManager.Rollback() end: transform.position={transform.position}, m_RB2D.position={m_RB2D.position}"
+                );
         }
 
         // Nullifies velocity
@@ -275,11 +278,12 @@ namespace Rollback
             // Preserve invariant (*)
             m_State.RigidbodyPosition = m_RB2D.position;
 
-            DebugUI.WriteSequenced(
-                DebugGroup.Movement,
-                $"{m_MetadataManager.Id} MovementManager.OnSimulated()",
-                $"id={m_MetadataManager.Id} MovementManager.OnSimulated(): m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.WriteSequenced(
+                    DebugGroup.Movement,
+                    $"{m_MetadataManager.Id} MovementManager.OnSimulated()",
+                    $"id={m_MetadataManager.Id} MovementManager.OnSimulated(): m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+                );
 
             // AssertSimulatedStateEqualsPrior(untilTickExclusive);
         }
@@ -527,7 +531,9 @@ namespace Rollback
         // extrapolation.
         void AssertSimulatedStateEqualsPrior(ushort tick)
         {
-            #if DEVELOPMENT_BUILD || UNITY_EDITOR
+            if (!DebugFlags.IsDebugging)
+                return;
+
             if (m_DebugStateSimulated[tick])
             {
                 Assert.IsTrue(m_State.Equals(m_DebugStateHistory[tick]));
@@ -537,7 +543,6 @@ namespace Rollback
                 m_DebugStateSimulated[tick] = true;
                 m_DebugStateHistory[tick].Assign(m_State);
             }
-            #endif
         }
 
         // Returns whether or not direction is moving into the surface with the given normal. Assumes both parameters are normalized.

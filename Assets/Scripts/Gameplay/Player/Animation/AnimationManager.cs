@@ -143,7 +143,7 @@ namespace Rollback
             m_Animator.Play(name, layer: 0, normalizedTime: m_State.MotionTime % 1.0f);
             CurrentAnimationName = name;
 
-            Debug.Log($"Switched to {CurrentAnimationName}");
+            // Debug.Log($"Switched to {CurrentAnimationName}");
         }
 
         bool RecentlyLanded()

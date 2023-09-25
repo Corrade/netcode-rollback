@@ -43,11 +43,12 @@ namespace Rollback
 
         void Start()
         {
-            DebugUI.Write(
-                DebugGroup.Networking,
-                "Artificial network parameters",
-                $"Artificial latency = {Settings.ArtificialLatencyMs} ms\nArtificial packet loss = {100 * Settings.ArtificialPacketLossPc}%"
-            );
+            if (DebugFlags.IsDebugging)
+                DebugUI.Write(
+                    DebugGroup.Networking,
+                    "Artificial network parameters",
+                    $"Artificial latency = {Settings.ArtificialLatencyMs} ms\nArtificial packet loss = {100 * Settings.ArtificialPacketLossPc}%"
+                );
 
             RoundEndDialogue.gameObject.SetActive(false);
             MatchEndDialogue.gameObject.SetActive(false);
