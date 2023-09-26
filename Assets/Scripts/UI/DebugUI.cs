@@ -9,7 +9,12 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /*
-ZERO OVERHEAD
+ZERO OVERHEAD AND ACHIEVING CONDITIONAL COMPILATION
+
+(The following discussion is based on testing done in the editor. Behaviour
+might be different/nicer with a standalone development or release build. Still,
+adapting code for the editor is worthwhile because the editor is so
+convenient.)
 
 Profiling results find that this class, when enabled, is responsible for the
 vast majority of the game loop's CPU footprint.
@@ -20,17 +25,25 @@ debugging.
 Ultimately, the solution is to left to the caller, who should wrap calls to
 this class in a compile-time condition:
 
-if (DebugFlags.IsDebugging) // where IsDebugging is a const variable
+if (DebugFlags.IsDebugging) // where IsDebugging is a const variable*
     DebugUI.Func(...)
 
 Because the conditional variable is const, the condition will be evaluated
 at compile-time. If it's found to be false (debugging is disabled), the whole
-block will be scrapped and we'll pay nothing during runtime.
+block will be scrapped (citation needed) and we'll pay nothing during runtime.
+In other words, the whole function call will be subject to conditional
+compilation.
+
+*The condition just has to be something that can be resolved at compile-time.
+A simple const variable is nice because it'll signpost itself with an
+"unreachable code" editor warning when the condition is false. Something a bit
+more elaborate, like a function returning a const variable, will also work,
+but it just won't produce the same warning!
 
 Q: This is tedious and involves lots of code duplication. Why not move the
 condition inside the functions here? In other words, return immediately /
 no-op if we're debugging.
-A: This doesn't achieve zero overhead. Supposing that debugging is disabled
+A: That wouldn't eliminate all overhead. Supposing that debugging is disabled
 and the condition is false, the compiler is NOT smart enough to then erase
 all calls to the resulting no-ops. The functions will still be called. Sure,
 they'll just be no-ops so we'll avoid lots of work, but we'll still incur the
@@ -38,25 +51,11 @@ cost of constructing their arguments (and actually calling them). This retains
 a major performance penalty as arguments to popular utilities like Write()
 usually involve lots of data fetching and string formatting - expensive!
 For zero overhead, we need to ensure these functions are never called, and
-moving our conditions inside them can't accomplish thaht.
+moving our conditions inside them can't accomplish that.
 
 Q: Why not use Unity's #defines instead of a custom debugging flag?
 A: For brevity and, more importantly, flexibility. Unity's related #defines are
 coupled with launcher settings and the editor context.
-
-Also note that the condition really must just be a const variable:
-
-// Doesn't work - no compile-time functions, even trivial ones
-if (GetConstVariable())
-    ...
-
-// Doesn't work - the const variable must be isolated
-if (ConstVariable || Bar())
-    ...
-
-// Works
-if (ConstVariable)
-    ...
 */
 
 namespace Rollback
@@ -87,6 +86,9 @@ namespace Rollback
             Instance = this;
 
             Assert.IsTrue(DebugDialogue != null);
+
+            if (!DebugFlags.IsDebugging)
+                DebugDialogue.text = "";
         }
 
         void Update()

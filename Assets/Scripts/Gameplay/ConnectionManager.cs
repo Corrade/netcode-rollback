@@ -102,14 +102,19 @@ namespace Rollback
             https://www.darkriftnetworking.com/DarkRift2/Docs/2.10.1/advanced/recycling.html
             */
 
-            Assert.IsTrue(m_PeerClient != null);
-            Assert.IsTrue(m_PeerClient.ConnectionState == ConnectionState.Connected);
-
             StartCoroutine(SendMessageUnderSimulatedConditions(createMessage, sendMode));
         }
 
         IEnumerator SendMessageUnderSimulatedConditions(Func<Message> createMessage, SendMode sendMode)
         {
+            // It's possible for this function to be called during setup,
+            // e.g. by a message handler that's added to the self client and
+            // immediately receives a message.
+            yield return new WaitUntil(() => m_IsSetupComplete);
+
+            Assert.IsTrue(m_PeerClient != null);
+            Assert.IsTrue(m_PeerClient.ConnectionState == ConnectionState.Connected);
+
             /*
             ARTIFICIAL PACKET LOSS MUST BE SENDER-SIDE
 
@@ -221,7 +226,7 @@ namespace Rollback
                     }
                 }
 
-                Debug.LogError($"Failed to connect self client to peer server at {peerAddress}:{peerPort}, retrying...");
+                Debug.LogWarning($"Failed to connect self client to peer server at {peerAddress}:{peerPort}, retrying...");
                 yield return new WaitForSecondsRealtime(m_ConnectClientRetryIntervalSec);
             }
         }
@@ -236,7 +241,9 @@ namespace Rollback
             }
             catch (Exception e)
             {
-                Debug.LogError(e);
+                // Failure is expected while the first client waits for the
+                // second
+                Debug.LogWarning(e);
                 return false;
             }
         }
@@ -253,7 +260,7 @@ namespace Rollback
 
         void OnClientDisconnected(object sender, ClientDisconnectedEventArgs e)
         {
-            Debug.LogError("Peer client disconnected from self server");
+            Debug.Log("Peer client disconnected from self server");
         }
     }
 }

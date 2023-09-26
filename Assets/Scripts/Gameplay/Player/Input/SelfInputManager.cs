@@ -7,8 +7,6 @@ using UnityEngine.Assertions;
 using DarkRift;
 using DarkRift.Client;
 using DarkRift.Client.Unity;
-using DarkRift.Server;
-using DarkRift.Server.Unity;
 
 using Rollback;
 
@@ -148,7 +146,7 @@ namespace Rollback
             ConnectionManager.Instance.SendMessage(() => InputMsg.CreateMessage(startTick, inputs), SendMode.Unreliable);
         }
 
-        void OnMessageReceived(object sender, DarkRift.Client.MessageReceivedEventArgs e)
+        void OnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
             using (Message message = e.GetMessage() as Message)
             {
@@ -159,7 +157,7 @@ namespace Rollback
             }
         }
 
-        void HandleInputAckMsg(object sender, DarkRift.Client.MessageReceivedEventArgs e)
+        void HandleInputAckMsg(object sender, MessageReceivedEventArgs e)
         {
             using (Message message = e.GetMessage())
             {
