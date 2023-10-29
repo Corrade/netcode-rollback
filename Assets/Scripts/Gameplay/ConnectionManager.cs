@@ -109,7 +109,7 @@ namespace Rollback
         {
             // It's possible for this function to be called during setup,
             // e.g. by a message handler that's added to the self client and
-            // immediately receives a message.
+            // immediately receives a message
             yield return new WaitUntil(() => m_IsSetupComplete);
 
             Assert.IsTrue(m_PeerClient != null);
@@ -241,8 +241,9 @@ namespace Rollback
             }
             catch (Exception e)
             {
-                // Failure is expected while the first client waits for the
-                // second
+                // The client who's first to setup their server will expect
+                // to fail here until the other client spins up, so we produce
+                // a warning rather than an error
                 Debug.LogWarning(e);
                 return false;
             }
