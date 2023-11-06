@@ -90,19 +90,26 @@ namespace Rollback
 
         public void SendMessage(Func<Message> createMessage, SendMode sendMode)
         {
-            /*
-            DO NOT PASS MESSAGES DIRECTLY INTO COROUTINES
+            if (Settings.ArtificialLatencyMs > 0)
+            {
+                /*
+                DO NOT PASS MESSAGES DIRECTLY INTO COROUTINES
 
-            Removing this behaviour solved a bug related to malformed messages.
-            I presume that messages are automatically disposed of during the
-            coroutine's execution.
+                Removing this behaviour solved a bug related to malformed messages.
+                I presume that messages are automatically disposed of during the
+                coroutine's execution.
 
-            To work around this, pass a delegate that returns a message.
+                To work around this, pass a delegate that returns a message.
 
-            https://www.darkriftnetworking.com/DarkRift2/Docs/2.10.1/advanced/recycling.html
-            */
-
-            StartCoroutine(SendMessageUnderSimulatedConditions(createMessage, sendMode));
+                https://www.darkriftnetworking.com/DarkRift2/Docs/2.10.1/advanced/recycling.html
+                */
+                StartCoroutine(SendMessageUnderSimulatedConditions(createMessage, sendMode));
+            }
+            else
+            {
+                // Avoid slowing things down by creating unnecessary coroutines
+                SendMessageImmediately(createMessage, sendMode);
+            }
         }
 
         IEnumerator SendMessageUnderSimulatedConditions(Func<Message> createMessage, SendMode sendMode)
@@ -111,20 +118,6 @@ namespace Rollback
             // e.g. by a message handler that's added to the self client and
             // immediately receives a message
             yield return new WaitUntil(() => m_IsSetupComplete);
-
-            Assert.IsTrue(m_PeerClient != null);
-            Assert.IsTrue(m_PeerClient.ConnectionState == ConnectionState.Connected);
-
-            /*
-            ARTIFICIAL PACKET LOSS MUST BE SENDER-SIDE
-
-            Artificial packet loss must be done while sending, not receiving.
-
-            Doing it after receipt undermines TCP packets. When you drop a
-            reliably-sent packet from the application layer, it won't
-            trigger the reliability mechanisms (resending) since they already
-            completed their job by pushing the packet to the application layer.
-            */
 
             // Artificial latency
             if (Settings.ArtificialLatencyMs > 0)
@@ -144,10 +137,38 @@ namespace Rollback
                 yield return new WaitForSecondsRealtime(Settings.ArtificialLatencyMs / 1000f);
             }
 
+            SendMessageImmediately(createMessage, sendMode);
+        }
+
+        void SendMessageImmediately(Func<Message> createMessage, SendMode sendMode)
+        {
+            if (!m_IsSetupComplete)
+            {
+                Debug.LogError("Setup incomplete, unable to send message");
+                return;
+            }
+
+            if (m_PeerClient == null || m_PeerClient.ConnectionState != ConnectionState.Connected)
+            {
+                Debug.LogError("Peer not connected, unable to send message");
+                return;
+            }
+
+            /*
+            ARTIFICIAL PACKET LOSS MUST BE SENDER-SIDE
+
+            Artificial packet loss must be done while sending, not receiving.
+
+            Doing it after receipt undermines TCP packets. When you drop a
+            reliably-sent packet from the application layer, it won't
+            trigger the reliability mechanisms (resending) since they already
+            completed their job by pushing the packet to the application layer.
+            */
+
             // Artificial packet loss
             if (sendMode == SendMode.Unreliable && RandomService.ReturnTrueWithProbability(Settings.ArtificialPacketLossPc))
             {
-                yield break;
+                return;
             }
 
             using (Message msg = createMessage())
