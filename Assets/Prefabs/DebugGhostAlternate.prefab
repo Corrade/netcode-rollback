@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7554831577658332287}
   - component: {fileID: 7554831577658332286}
   m_Layer: 0
-  m_Name: DebugGhost
+  m_Name: DebugGhostAlternate
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -73,8 +73,8 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: -1
-  m_Sprite: {fileID: 21300000, guid: 9f3c1a5f26804cafb0f60a50662d8e89, type: 3}
-  m_Color: {r: 0, g: 1, b: 0.93225074, a: 0.3529412}
+  m_Sprite: {fileID: 21300000, guid: 4f24a33c1587499b86a77f5da7b0f179, type: 3}
+  m_Color: {r: 1, g: 0, b: 0, a: 0.3529412}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0

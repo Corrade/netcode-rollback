@@ -70,6 +70,9 @@ namespace Rollback
         [SerializeField]
         GameObject DebugGhostPrefab;
 
+        [SerializeField]
+        GameObject DebugGhostPrefabAlternate;
+
         Dictionary<string, string> m_DebugText = new Dictionary<string, string>();
         Dictionary<string, GameObject> m_DebugGhosts = new Dictionary<string, GameObject>();
 
@@ -131,13 +134,8 @@ namespace Rollback
         }
 
         // Updates the position of the ghost in the given channel
-        public static void ShowGhost(DebugGroup debugGroup, string channel, Vector2 position)
+        public static void ShowGhost(DebugGroup debugGroup, string channel, Vector2 position, bool useAlternateSprite = false)
         {
-            if (!DebugFlags.IsDebugging)
-                return;
-
-            if (!IsDebugGroupEnabled(debugGroup))
-                return;
 
             if (Instance.m_DebugGhosts.ContainsKey(channel))
             {
@@ -146,7 +144,11 @@ namespace Rollback
             }
             else
             {
-                Instance.m_DebugGhosts[channel] = Instantiate(Instance.DebugGhostPrefab, position: position, rotation: Quaternion.identity);
+                Instance.m_DebugGhosts[channel] = Instantiate(
+                    useAlternateSprite ? Instance.DebugGhostPrefabAlternate : Instance.DebugGhostPrefab,
+                    position: position,
+                    rotation: Quaternion.identity
+                );
                 Instance.m_DebugGhosts[channel].SetActive(true);
             }
         }

@@ -23,6 +23,8 @@ namespace Rollback
         {
             base.Awake();
             m_PeerInputManager = GetComponent<PeerInputManager>();
+
+            MetadataManager.Initialise(id: 1, name: MetadataManager.Name);
         }
 
         public void SimulateWithExtrapolation()

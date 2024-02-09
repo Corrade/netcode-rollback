@@ -184,7 +184,14 @@ namespace Rollback
             SelfPlayer.SendUnackedInputs(untilTickExclusive: TickService.Add(currentTick, 1));
 
             // Rollback to the gamestate and tick saved by the latest call
-            // to SaveRollbackState()
+            // to SaveRollbackState().
+            // In a client-server scheme, this tick would be the latest
+            // tick received from the server, i.e. the latest authoritative
+            // tick. In our peer-to-peer setup, authority is democratised. The
+            // latest authoritative tick is the latest one for which we have
+            // all players' information. Since this project is a 1v1 game and
+            // we obviously have our own input, we end up rolling back to the
+            // latest tick that we have the peer's input for.
             ushort t = RollbackManager.Rollback();
 
             if (DebugFlags.IsDebugging)
@@ -213,9 +220,9 @@ namespace Rollback
             if (DebugFlags.IsDebugging)
             {
                 DebugUI.ShowGhost(DebugGroup.Core, "Self ghost", SelfPlayer.Position);
-                DebugUI.ShowGhost(DebugGroup.Core, "Self kick collider", SelfPlayer.KickColliderPosition);
+                DebugUI.ShowGhost(DebugGroup.Core, "Self kick collider", SelfPlayer.KickColliderPosition, useAlternateSprite: true);
                 DebugUI.ShowGhost(DebugGroup.Core, "Peer ghost", PeerPlayer.Position);
-                DebugUI.ShowGhost(DebugGroup.Core, "Peer kick collider", PeerPlayer.KickColliderPosition);
+                DebugUI.ShowGhost(DebugGroup.Core, "Peer kick collider", PeerPlayer.KickColliderPosition, useAlternateSprite: true);
             }
 
             // t <= currentTick+1
