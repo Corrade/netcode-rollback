@@ -53,7 +53,7 @@ namespace Rollback
             }
         }
 
-        // m_InputHistory[tick] = input bitarray during that tick
+        // m_InputHistory[tick] = input bit array during that tick
         ushort[] m_InputHistory = new ushort[TickService.MaxTick];
         ushort m_StartInclusive;
         ushort m_EndExclusive;

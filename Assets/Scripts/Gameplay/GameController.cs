@@ -189,9 +189,9 @@ namespace Rollback
             // tick received from the server, i.e. the latest authoritative
             // tick. In our peer-to-peer setup, authority is democratised. The
             // latest authoritative tick is the latest one for which we have
-            // all players' information. Since this project is a 1v1 game and
-            // we obviously have our own input, we end up rolling back to the
-            // latest tick that we have the peer's input for.
+            // all players' information, i.e. consensus.
+            // Here, specifically, we end up rolling back to the latest tick
+            // for which we had both players' inputs for *in the previous game loop*.
             ushort t = RollbackManager.Rollback();
 
             if (DebugFlags.IsDebugging)
@@ -203,12 +203,13 @@ namespace Rollback
             if (DebugFlags.IsDebugging)
                 DebugUI.WriteSequenced(DebugGroup.Core, "Official simulation start", $"Official simulation start: t={t}, self={SelfPlayer.Position}, peer={PeerPlayer.Position}");
 
-            // Simulate while both players' inputs are present, starting from
-            // and including t
+            // Simulate both players for as many ticks as we have both players'
+            // inputs for *now*, starting from and including t
             for (; PeerPlayer.HasInput(t) && TickService.IsBeforeOrEqual(t, currentTick); t = TickService.Add(t, 1))
             {
                 SelfPlayer.Simulate(t);
                 PeerPlayer.Simulate(t);
+                // Actually run the simulation using Physics2D.Simulate()
                 RunSimulation(isSimulatingOfficially: true, tick: t);
             }
 
@@ -243,8 +244,11 @@ namespace Rollback
             {
                 Assert.IsTrue(!PeerPlayer.HasInput(t));
 
+                // "Client"-side prediction
                 SelfPlayer.Simulate(t);
+                // Entity extrapolation, aka. dead reckoning
                 PeerPlayer.SimulateWithExtrapolation();
+                // We ignore collisions when isSimulatingOfficially is false
                 RunSimulation(isSimulatingOfficially: false, tick: t);
             }
 
@@ -260,8 +264,8 @@ namespace Rollback
             // mechanics, e.g. animation rollback
             ushort t = RollbackManager.Rollback();
 
-            // Never simulate up to more than 8 ticks behind the current tick
-            // so that we force rollback to occur
+            // Force rollback to occur by never simulating up to more than
+            // 8 ticks (arbitrary magic number) behind the current tick
             for (; TickService.IsBeforeOrEqual(t, TickService.Subtract(currentTick, 8)); t = TickService.Add(t, 1))
             {
                 SelfPlayer.Simulate(t);

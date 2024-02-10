@@ -140,7 +140,7 @@ namespace Rollback
                 // we've yet to run a simulation step.
                 // The invariant is still true and will only become false
                 // after simulation. So, we'll defer doing anything until
-                // then (see OnSimulated()).
+                // then (see OnSimulationProgressed()).
             }
 
             if (DebugFlags.IsDebugging)
@@ -281,8 +281,8 @@ namespace Rollback
             if (DebugFlags.IsDebugging)
                 DebugUI.WriteSequenced(
                     DebugGroup.Movement,
-                    $"{m_MetadataManager.Id} MovementManager.OnSimulated()",
-                    $"id={m_MetadataManager.Id} MovementManager.OnSimulated(): m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
+                    $"{m_MetadataManager.Id} MovementManager.OnSimulationProgressed()",
+                    $"id={m_MetadataManager.Id} MovementManager.OnSimulationProgressed(): m_State.RigidbodyPosition={m_State.RigidbodyPosition}, transform.position={transform.position}"
                 );
 
             // AssertSimulatedStateEqualsPrior(untilTickExclusive);

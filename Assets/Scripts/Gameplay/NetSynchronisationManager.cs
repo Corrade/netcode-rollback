@@ -84,6 +84,7 @@ namespace Rollback
             return TickService.Add(m_LatestPeerPingTick, timeSincePeerSentPingTick);
         }
 
+        // Dampen net jitter by taking an average of recent RTT measurements
         float EstimateRTTSec()
         {
             /*
@@ -110,6 +111,9 @@ namespace Rollback
                 : m_SumRTTsSec / m_RTTsSec.Count;
         }
 
+        // We accept tick differences within a threshold to prevent clients from
+        // continuously flip-flopping between catching up and resting in a
+        // futile pursuit of perfect synchronisation
         bool NeedsToCatchUp(ushort behindByTick)
         {
             return behindByTick >= m_StartCatchingUpThresholdTick;
