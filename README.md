@@ -1,4 +1,4 @@
-# P2P Rollback
+# Peer-to-peer Rollback
 
 ![Demo GIF](./ReadmeAssets/rollback.gif)
 
@@ -10,7 +10,7 @@ The above GIF depicts demo gameplay with an artificial 100 ms ping between two p
 
 This is a solo project written in C# using Unity and [DarkRift 2](https://www.darkriftnetworking.com/), and illustrated using Photoshop.
 
-Based on [Divekick](https://store.steampowered.com/app/244730/Divekick/), a minimalistic fighting game.
+Based on [Divekick (2013)](https://store.steampowered.com/app/244730/Divekick/), a minimalistic fighting game.
 
 
 ## Table of contents
@@ -39,7 +39,7 @@ The game loop is as follows:
 2. Send all un-acknowledged inputs to our peer;
 3. Roll back to the latest tick for which we had both players' inputs for *in the previous game loop*;
 4. Simulate both players for as many ticks as we have both players' inputs for *now*;
-5. Save the resulting state so that we can roll back to it in the game loop;
+5. Save the resulting state so that we can roll back to it in the next game loop;
 6. Finally, simulate up until the current tick by performing "client"-side prediction and entity extrapolation.
 
 [GameController.cs](./Assets/Scripts/Gameplay/GameController.cs)
